@@ -6,7 +6,7 @@ from config.constants import LEADERBOARD_DISPLAY_COUNT, WEEKLY_REWARDS, LEADERBO
 from database.models import User, LeaderboardEntry
 from database.sheets_client import db
 
-logger = logging_getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class LeaderboardManager:
@@ -24,12 +24,13 @@ class LeaderboardManager:
         highlight_user_id: int = None,
         max_display: int = LEADERBOARD_DISPLAY_COUNT
     ) -> str:
-        Format leaderboard for display.
+        """Format leaderboard for display.
         
         Args:
             leaderboard: List of leaderboard entries
             highlight_user_id: User ID to highlight with an arrow
             max_display: Maximum number of entries to display
+        """
         if not leaderboard:
             return "No players yet this week. Be the first!"
         
@@ -61,7 +62,7 @@ class LeaderboardManager:
         if rank == 0:
             return "You're not on the leaderboard yet. Start playing to earn your spot!"
         
-        text = f"**Your Rank:**
+        text = f"**Your Rank:** {rank}\n"
         text += f"**Your Points:** {user.weekly_points:,}\n\n"
         
         reward = WEEKLY_REWARDS.get(rank)
@@ -75,11 +76,12 @@ class LeaderboardManager:
     
     @staticmethod
     def process_weekly_rewards() -> Tuple[bool, str]:
-        Process end-of-week rewards and reset.
+        """Process end-of-week rewards and reset.
         Should be called by scheduler at end of week.
         
         Returns:
             Tuple of (success, summary_message)
+        """
         try:
             leaderboard = LeaderboardManager.get_full_leaderboard()
             

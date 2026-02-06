@@ -107,7 +107,7 @@ class BotHandlers:
             return
         
         rank = db.get_user_rank(telegram_id)
-        rank_text = f"
+        rank_text = f"Rank: {rank}"
         
         user_type = "💎 Premium Subscriber" if user.is_subscriber else "Free User"
         
@@ -221,6 +221,7 @@ Top players win prizes! 🏆
 
 **Need Support?**
 Contact @admin for help.
+        """
         await update.message.reply_text(
             help_text,
             parse_mode=ParseMode.MARKDOWN

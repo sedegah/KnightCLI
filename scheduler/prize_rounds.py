@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 class PrizeRoundScheduler:
     def __init__(self, bot):
-        Initialize the prize round scheduler.
+        """Initialize the prize round scheduler.
         
         Args:
             bot: Telegram Bot instance
+        """
         self.bot = bot
         self.scheduler = AsyncIOScheduler(timezone=settings.TIMEZONE)
         self.is_prize_round_active = False
@@ -92,10 +93,11 @@ class PrizeRoundScheduler:
         await self._start_prize_round("evening")
     
     async def _start_prize_round(self, round_type: str):
-        Start a prize round and broadcast to users.
+        """Start a prize round and broadcast to users.
         
         Args:
             round_type: "morning" or "evening"
+        """
         self.is_prize_round_active = True
         self.current_round_type = round_type
         
@@ -181,10 +183,11 @@ class PrizeRoundScheduler:
             logger.error(f"Weekly reset failed: {summary}")
     
     async def _broadcast_to_all_users(self, message: str):
-        Broadcast a message to all users.
+        """Broadcast a message to all users.
         
         Args:
             message: Message text to send
+        """
         from database.sheets_client import db
         
         try:

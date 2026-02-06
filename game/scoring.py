@@ -1,4 +1,4 @@
-Calculates points based on user type, question type, speed, and streaks.
+"""Calculates points based on user type, question type, speed, and streaks."""
 from datetime import datetime, timedelta
 from typing import Tuple
 import logging
@@ -22,10 +22,11 @@ class ScoringEngine:
         attempt_number: int = 1,
         is_prize_round: bool = False
     ) -> Tuple[int, dict]:
-        Calculate points for an attempt.
+        """Calculate points for an attempt.
         
         Returns:
             Tuple of (total_points, breakdown_dict)
+        """
         if not is_correct:
             return 0, {"base": 0, "speed_bonus": 0, "streak_bonus": 0, "total": 0}
         
@@ -62,8 +63,9 @@ class ScoringEngine:
     
     @staticmethod
     def _calculate_speed_bonus(response_time: float, max_bonus: int) -> int:
-        Calculate speed bonus based on response time.
+        """Calculate speed bonus based on response time.
         Linear scaling: fastest gets max bonus, slowest gets 0.
+        """
         if response_time <= 0 or max_bonus == 0:
             return 0
         
@@ -87,10 +89,11 @@ class ScoringEngine:
     
     @staticmethod
     def update_user_streak(user: User) -> Tuple[User, bool]:
-        Update user's streak based on last played date.
+        """Update user's streak based on last played date.
         
         Returns:
             Tuple of (updated_user, streak_broken)
+        """
         today = datetime.utcnow().date()
         streak_broken = False
         

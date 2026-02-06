@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 class ReminderScheduler:
     def __init__(self, bot):
-        Initialize the reminder scheduler.
+        """Initialize the reminder scheduler.
         
         Args:
             bot: Telegram Bot instance
+        """
         self.bot = bot
         self.scheduler = AsyncIOScheduler(timezone=settings.TIMEZONE)
     
@@ -87,11 +88,12 @@ class ReminderScheduler:
             logger.error(f"Daily reminder process failed: {e}")
     
     async def send_custom_reminder(self, telegram_id: int, message: str):
-        Send a custom reminder to a specific user.
+        """Send a custom reminder to a specific user.
         
         Args:
             telegram_id: User's Telegram ID
             message: Message text
+        """
         try:
             await self.bot.send_message(
                 chat_id=telegram_id,

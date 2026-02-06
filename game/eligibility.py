@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 class EligibilityChecker:
     @staticmethod
     def check_play_eligibility(user: User) -> Tuple[bool, Optional[str]]:
-        Check if user can play right now.
+        """Check if user can play right now.
         
         Returns:
             Tuple of (is_eligible, error_message)
+        """
         if user.is_banned:
             return False, "⛔ Your account has been banned. Contact @admin."
         
@@ -50,8 +51,9 @@ class EligibilityChecker:
     
     @staticmethod
     def check_prize_round_eligibility(user: User) -> Tuple[bool, Optional[str]]:
-        Check if user is eligible for prize rounds.
+        """Check if user is eligible for prize rounds.
         Currently, all non-banned users are eligible.
+        """
         if user.is_banned:
             return False, "⛔ Your account has been banned."
         
@@ -62,11 +64,12 @@ class EligibilityChecker:
         return True, None
     
     @staticmethod
-    def check_question_attempts(user: User, question_id: str) -> Tuple[bool, Optional[str], int]:
-        Check if user can attempt this specific question.
+    def check_question_attempts(user: User, question_id: str, question_type: str = "single") -> Tuple[bool, Optional[str], int]:
+        """Check if user can attempt this specific question.
         
         Returns:
             Tuple of (can_attempt, error_message, current_attempt_number)
+        """
         current_attempts = db.get_user_attempts_count(user.telegram_id, question_id)
         
         if question_type == "continuous":
@@ -81,7 +84,7 @@ class EligibilityChecker:
     
     @staticmethod
     def _get_wait_time(hourly_attempts: int, telegram_id: int) -> int:
-        Calculate estimated wait time in minutes before user can play again.
+        """Calculate estimated wait time in minutes before user can play again."""
         try:
             from database.sheets_client import db
             worksheet = db._get_worksheet("attempts")
@@ -110,10 +113,11 @@ class EligibilityChecker:
     
     @staticmethod
     def validate_answer_timing(response_time: float) -> Tuple[bool, Optional[str]]:
-        Validate that answer timing is legitimate.
+        """Validate that answer timing is legitimate.
         
         Returns:
             Tuple of (is_valid, warning_message)
+        """
         min_time = ANTI_CHEAT["min_answer_time_seconds"]
         
         if response_time < min_time:
@@ -128,7 +132,7 @@ class EligibilityChecker:
     
     @staticmethod
     def check_and_flag_suspicious_behavior(user: User) -> User:
-        Check for suspicious patterns and update flags if needed.
+        """Check for suspicious patterns and update flags if needed."""
         try:
             from database.sheets_client import db
             worksheet = db._get_worksheet("attempts")

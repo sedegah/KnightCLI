@@ -17,10 +17,11 @@ class QuestionManager:
     
     @staticmethod
     def get_question_for_user(user: User, is_prize_round: bool = False) -> Tuple[Optional[Question], Optional[str]]:
-        Get an appropriate question for the user.
+        """Get an appropriate question for the user.
         
         Returns:
             Tuple of (Question, error_message)
+        """
         is_eligible, error = eligibility_checker.check_play_eligibility(user)
         if not is_eligible:
             return None, error
@@ -61,11 +62,12 @@ class QuestionManager:
         selected_option: str,
         is_prize_round: bool = False
     ) -> Tuple[bool, dict]:
-        Process user's answer and calculate results.
+        """Process user's answer and calculate results.
         
         Returns:
             Tuple of (success, result_dict)
             result_dict contains: is_correct, points, breakdown, updated_user, streak_broken, etc.
+        """
         active_key = f"{user.telegram_id}_{question_id}"
         active_data = QuestionManager.active_questions.get(active_key)
         
@@ -96,7 +98,7 @@ class QuestionManager:
         
         user, streak_broken = scoring_engine.update_user_streak(user)
         
-            point_type = scoring_engine.get_point_type(is_prize_round)
+        point_type = scoring_engine.get_point_type(is_prize_round)
         user = scoring_engine.apply_points_to_user(user, points, point_type)
         
         user.total_questions += 1

@@ -1,4 +1,4 @@
-Provides CRUD operations for all data models.
+"""Provides CRUD operations for all data models."""
 import gspread
 from google.oauth2.service_account import Credentials
 from typing import Optional, List, Dict
@@ -204,8 +204,8 @@ class SheetsDatabase:
             logger.error(f"Error getting hourly attempts: {e}")
             return 0
     
-    def _get_answered_question_ids(self, telegram_id: int, question_type: str) -> set:
-            def _get_answered_question_ids(self, telegram_id: int) -> set:
+    def _get_answered_question_ids(self, telegram_id: int) -> set:
+        """Get all questions answered by a user."""
         try:
             worksheet = self._get_worksheet(SHEET_NAMES["attempts"])
             records = worksheet.get_all_values()

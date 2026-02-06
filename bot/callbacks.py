@@ -76,7 +76,7 @@ class CallbackHandlers:
             response_text = "✅ **Correct!**\n\n"
             response_text += scoring_engine.format_points_breakdown(breakdown, point_type)
             response_text += f"\n\n**Your Total:** {result['user'].ap:,} AP | {result['user'].pp:,} PP\n"
-            response_text += f"**Weekly Rank:**
+            response_text += f"**Weekly Rank:** {result['user_rank']}\n"
             
             if result["streak_broken"]:
                 response_text += "\n⚠️ Your streak was reset due to missed days."
@@ -187,7 +187,7 @@ class CallbackHandlers:
             return
         
         rank = db.get_user_rank(telegram_id)
-        rank_text = f"
+        rank_text = f"Rank: {rank}"
         
         user_type = "💎 Premium Subscriber" if user.is_subscriber else "Free User"
         

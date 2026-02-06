@@ -1,4 +1,4 @@
-Run this once before starting the bot.
+"""Run this once before starting the bot."""
 import sys
 import logging
 from database.sheets_client import db
