@@ -64,34 +64,34 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     <title>Telegram Quiz Bot - KnightCLI</title>
 </head>
 <body>
-    <h1>🎮 Telegram Quiz Bot</h1>
+    <h1>Telegram Quiz Bot</h1>
     <p>Test Your Knowledge, Win Prizes!</p>
     
     <h2>Features</h2>
     <ul>
         <li>
-            <strong>📚 Continuous Play</strong><br>
+            <strong>Continuous Play</strong><br>
             Answer questions anytime, earn Accumulated Points (AP), and build your daily streak!
         </li>
         <li>
-            <strong>🏆 Prize Rounds</strong><br>
-            Compete twice daily at 9:00 AM & 9:00 PM UTC for real rewards and Prize Points (PP).
+            <strong>Prize Rounds</strong><br>
+            Compete twice daily at 9:00 AM and 9:00 PM UTC for real rewards and Prize Points (PP).
         </li>
         <li>
-            <strong>📊 Weekly Leaderboard</strong><br>
+            <strong>Weekly Leaderboard</strong><br>
             Climb the rankings and compete with players from around the world!
         </li>
         <li>
-            <strong>💎 Premium Features</strong><br>
+            <strong>Premium Features</strong><br>
             Upgrade for higher points, more attempts, and exclusive bonuses.
         </li>
     </ul>
     
     <p>
-        <a href="https://t.me/knight_quiz_bot">🚀 Start Playing on Telegram</a>
+        <a href="https://t.me/knight_quiz_bot">Start Playing on Telegram</a>
     </p>
     
-    <p>✅ Bot Status: Live and Running</p>
+    <p>Bot Status: Live and Running</p>
 </body>
 </html>
             """
