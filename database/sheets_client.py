@@ -44,7 +44,7 @@ class SheetsDatabase:
                 self.client = gspread.authorize(creds)
             else:
                 # For public spreadsheets, create unauthorized client
-                self.client = gspread.Client()
+                self.client = gspread.Client(auth=None)
             
             self.spreadsheet = self.client.open_by_key(settings.SPREADSHEET_ID)
             logger.info("Connected to Google Sheets successfully")
