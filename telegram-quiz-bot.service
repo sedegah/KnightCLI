@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram Quiz Bot
+After=network.target
+
+[Service]
+Type=simple
+User=your_user
+WorkingDirectory=/path/to/telegram-quiz-bot
+Environment="PATH=/path/to/venv/bin"
+ExecStart=/path/to/venv/bin/python main.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
