@@ -2,6 +2,7 @@ import os
 from typing import List
 from dotenv import load_dotenv
 import pytz
+import json
 
 load_dotenv()
 
@@ -10,6 +11,7 @@ class Settings:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     
     GOOGLE_SHEETS_CREDENTIALS: str = os.getenv("GOOGLE_SHEETS_CREDENTIALS", "credentials.json")
+    GOOGLE_CREDENTIALS_JSON: str = os.getenv("GOOGLE_CREDENTIALS_JSON", "")
     SPREADSHEET_ID: str = os.getenv("SPREADSHEET_ID", "")
     
     ADMIN_TELEGRAM_IDS: List[int] = [
@@ -44,8 +46,9 @@ class Settings:
         if not cls.SPREADSHEET_ID:
             errors.append("SPREADSHEET_ID is required")
         
-        if not os.path.exists(cls.GOOGLE_SHEETS_CREDENTIALS):
-            errors.append(f"Google Sheets credentials file not found: {cls.GOOGLE_SHEETS_CREDENTIALS}")
+        # Check for credentials either as JSON env var or as file
+        if not cls.GOOGLE_CREDENTIALS_JSON and not os.path.exists(cls.GOOGLE_SHEETS_CREDENTIALS):
+            errors.append(f"Google Sheets credentials must be provided via GOOGLE_CREDENTIALS_JSON env var or {cls.GOOGLE_SHEETS_CREDENTIALS} file")
         
         return errors
     
