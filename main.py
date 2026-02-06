@@ -62,123 +62,36 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telegram Quiz Bot - KnightCLI</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 700px;
-            padding: 50px;
-            text-align: center;
-        }
-        h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #666;
-            font-size: 1.2em;
-            margin-bottom: 30px;
-        }
-        .features {
-            text-align: left;
-            margin: 30px 0;
-        }
-        .feature {
-            margin: 15px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-        }
-        .feature-title {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        .feature-desc {
-            color: #666;
-            font-size: 0.95em;
-        }
-        .cta {
-            margin-top: 40px;
-        }
-        .telegram-btn {
-            display: inline-block;
-            background: #0088cc;
-            color: white;
-            padding: 15px 40px;
-            border-radius: 30px;
-            text-decoration: none;
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0,136,204,0.3);
-        }
-        .telegram-btn:hover {
-            background: #006699;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,136,204,0.4);
-        }
-        .status {
-            margin-top: 30px;
-            padding: 10px;
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            border-radius: 5px;
-            color: #155724;
-        }
-        .emoji { font-size: 1.3em; }
-    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎮 Telegram Quiz Bot</h1>
-        <p class="subtitle">Test Your Knowledge, Win Prizes!</p>
-        
-        <div class="features">
-            <div class="feature">
-                <div class="feature-title"><span class="emoji">📚</span> Continuous Play</div>
-                <div class="feature-desc">Answer questions anytime, earn Accumulated Points (AP), and build your daily streak!</div>
-            </div>
-            
-            <div class="feature">
-                <div class="feature-title"><span class="emoji">🏆</span> Prize Rounds</div>
-                <div class="feature-desc">Compete twice daily at 9:00 AM & 9:00 PM UTC for real rewards and Prize Points (PP).</div>
-            </div>
-            
-            <div class="feature">
-                <div class="feature-title"><span class="emoji">📊</span> Weekly Leaderboard</div>
-                <div class="feature-desc">Climb the rankings and compete with players from around the world!</div>
-            </div>
-            
-            <div class="feature">
-                <div class="feature-title"><span class="emoji">💎</span> Premium Features</div>
-                <div class="feature-desc">Upgrade for higher points, more attempts, and exclusive bonuses.</div>
-            </div>
-        </div>
-        
-        <div class="cta">
-            <a href="https://t.me/knight_quiz_bot" class="telegram-btn">
-                🚀 Start Playing on Telegram
-            </a>
-        </div>
-        
-        <div class="status">
-            ✅ Bot Status: Live and Running
-        </div>
-    </div>
+    <h1>🎮 Telegram Quiz Bot</h1>
+    <p>Test Your Knowledge, Win Prizes!</p>
+    
+    <h2>Features</h2>
+    <ul>
+        <li>
+            <strong>📚 Continuous Play</strong><br>
+            Answer questions anytime, earn Accumulated Points (AP), and build your daily streak!
+        </li>
+        <li>
+            <strong>🏆 Prize Rounds</strong><br>
+            Compete twice daily at 9:00 AM & 9:00 PM UTC for real rewards and Prize Points (PP).
+        </li>
+        <li>
+            <strong>📊 Weekly Leaderboard</strong><br>
+            Climb the rankings and compete with players from around the world!
+        </li>
+        <li>
+            <strong>💎 Premium Features</strong><br>
+            Upgrade for higher points, more attempts, and exclusive bonuses.
+        </li>
+    </ul>
+    
+    <p>
+        <a href="https://t.me/knight_quiz_bot">🚀 Start Playing on Telegram</a>
+    </p>
+    
+    <p>✅ Bot Status: Live and Running</p>
 </body>
 </html>
             """
