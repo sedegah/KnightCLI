@@ -25,6 +25,7 @@ class SheetsDatabase:
         self.spreadsheet = None
         self.use_api_only = False
         self.has_write_access = False
+        self._in_memory_users = {}  # Cache for read-only mode
         self._connect()
     
     def _connect(self):
@@ -116,11 +117,19 @@ class SheetsDatabase:
     
     def get_user(self, telegram_id: int) -> Optional[User]:
         try:
+            # Check in-memory cache first for read-only mode
+            if not self.has_write_access and telegram_id in self._in_memory_users:
+                return self._in_memory_users[telegram_id]
+            
             records = self._get_worksheet_values(SHEET_NAMES["users"])
             
             for i, row in enumerate(records[1:], start=2):
                 if row and row[0] == str(telegram_id):
-                    return User.from_row(row)
+                    user = User.from_row(row)
+                    # Cache it for future reference
+                    if not self.has_write_access:
+                        self._in_memory_users[telegram_id] = user
+                    return user
             return None
         except Exception as e:
             logger.error(f"Error getting user {telegram_id}: {e}")
@@ -139,8 +148,9 @@ class SheetsDatabase:
             )
             
             if not self.has_write_access:
-                logger.warning(f"Cannot create user {telegram_id}: Database is in read-only mode. Provide service account credentials for full access.")
-                # Return the user object anyway so the bot can continue, but don't persist it
+                logger.warning(f"Storing user {telegram_id} in memory (read-only mode)")
+                # Cache in memory for read-only mode
+                self._in_memory_users[telegram_id] = user
                 return user
             
             worksheet = self._get_worksheet(SHEET_NAMES["users"])
@@ -155,8 +165,10 @@ class SheetsDatabase:
     
     def update_user(self, user: User) -> bool:
         if not self.has_write_access:
-            logger.warning(f"Cannot update user {user.telegram_id}: Database is in read-only mode")
-            return False
+            logger.warning(f"Updating user {user.telegram_id} in memory (read-only mode)")
+            # Update in-memory cache
+            self._in_memory_users[user.telegram_id] = user
+            return True
         
         try:
             worksheet = self._get_worksheet(SHEET_NAMES["users"])
