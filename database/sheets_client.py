@@ -7,6 +7,7 @@ import logging
 import random
 import string
 import json
+import os
 
 from config.settings import settings
 from config.constants import SHEET_NAMES, COLUMNS
@@ -28,17 +29,23 @@ class SheetsDatabase:
                 'https://www.googleapis.com/auth/drive'
             ]
             
-            # Load credentials from JSON env var or file
+            # Load credentials from JSON env var or file if available
+            creds = None
             if settings.GOOGLE_CREDENTIALS_JSON:
                 creds_dict = json.loads(settings.GOOGLE_CREDENTIALS_JSON)
                 creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-            else:
+            elif os.path.exists(settings.GOOGLE_SHEETS_CREDENTIALS):
                 creds = Credentials.from_service_account_file(
                     settings.GOOGLE_SHEETS_CREDENTIALS,
                     scopes=scopes
                 )
             
-            self.client = gspread.authorize(creds)
+            if creds:
+                self.client = gspread.authorize(creds)
+            else:
+                # For public spreadsheets, create unauthorized client
+                self.client = gspread.Client()
+            
             self.spreadsheet = self.client.open_by_key(settings.SPREADSHEET_ID)
             logger.info("Connected to Google Sheets successfully")
         except Exception as e:
