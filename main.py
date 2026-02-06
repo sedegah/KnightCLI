@@ -1,5 +1,6 @@
 import logging
 import sys
+import signal
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -131,7 +132,15 @@ def main():
     logger.info(f"Timezone: {settings.TIMEZONE}")
     logger.info("="*50)
     
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Set up signal handlers for graceful shutdown
+    def signal_handler(sig, frame):
+        logger.info(f"Received signal {sig}, stopping gracefully...")
+        application.stop()
+    
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    application.run_polling(allowed_updates=Update.ALL_TYPES, stop_signals=(signal.SIGTERM, signal.SIGINT))
 
 
 if __name__ == "__main__":
