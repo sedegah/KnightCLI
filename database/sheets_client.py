@@ -8,6 +8,9 @@ import random
 import string
 import json
 import os
+import requests
+import csv
+from io import StringIO
 
 from config.settings import settings
 from config.constants import SHEET_NAMES, COLUMNS
@@ -20,6 +23,7 @@ class SheetsDatabase:
     def __init__(self):
         self.client = None
         self.spreadsheet = None
+        self.use_api_only = False
         self._connect()
     
     def _connect(self):
@@ -42,17 +46,29 @@ class SheetsDatabase:
             
             if creds:
                 self.client = gspread.authorize(creds)
+                self.spreadsheet = self.client.open_by_key(settings.SPREADSHEET_ID)
+                self.use_api_only = False
             else:
-                # For public spreadsheets, create unauthorized client
-                self.client = gspread.Client(auth=None)
+                # For public spreadsheets, use Google Sheets API directly
+                self.use_api_only = True
+                self._verify_public_sheet_access()
             
-            self.spreadsheet = self.client.open_by_key(settings.SPREADSHEET_ID)
             logger.info("Connected to Google Sheets successfully")
         except Exception as e:
             logger.error(f"Failed to connect to Google Sheets: {e}")
             raise
     
+    def _verify_public_sheet_access(self):
+        """Verify that the public spreadsheet is accessible."""
+        try:
+            values = self._fetch_sheet_data_via_api("Sheet1")
+            logger.info("Public sheet access verified")
+        except Exception as e:
+            raise ValueError(f"Failed to access public spreadsheet: {e}")
+    
     def _get_worksheet(self, sheet_name: str):
+        if self.use_api_only:
+            raise NotImplementedError("Write operations not supported with public sheet access. Provide service account credentials for full access.")
         try:
             return self.spreadsheet.worksheet(sheet_name)
         except gspread.WorksheetNotFound:
@@ -61,6 +77,29 @@ class SheetsDatabase:
             if sheet_name in COLUMNS:
                 worksheet.append_row(COLUMNS[sheet_name])
             return worksheet
+    
+    def _get_worksheet_values(self, sheet_name: str) -> List[List]:
+        """Get all values from a worksheet, using API for public sheets."""
+        if self.use_api_only:
+            return self._fetch_sheet_data_via_api(sheet_name)
+        return self._get_worksheet(sheet_name).get_all_values()
+    
+    def _fetch_sheet_data_via_api(self, sheet_name: str) -> List[List]:
+        """Fetch sheet data directly from public spreadsheet using Google Sheets API."""
+        try:
+            # For public sheets, use the export URL which doesn't require authentication
+            # CSV format is the simplest for reading
+            csv_url = f"https://docs.google.com/spreadsheets/d/{settings.SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+            response = requests.get(csv_url)
+            response.raise_for_status()
+            
+            # Parse CSV response
+            reader = csv.reader(StringIO(response.text))
+            values = list(reader)
+            return values
+        except Exception as e:
+            logger.error(f"Error fetching sheet {sheet_name}: {e}")
+            return []
     
     
     def get_user(self, telegram_id: int) -> Optional[User]:
