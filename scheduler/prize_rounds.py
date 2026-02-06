@@ -57,11 +57,15 @@ class PrizeRoundScheduler:
         morning_warning_hour = settings.PRIZE_ROUND_MORNING_HOUR
         evening_warning_hour = settings.PRIZE_ROUND_EVENING_HOUR
         
+        # Warning 5 minutes before prize round (55 minutes of the hour before)
+        morning_warning_hour_actual = (settings.PRIZE_ROUND_MORNING_HOUR - 1) % 24
+        evening_warning_hour_actual = (settings.PRIZE_ROUND_EVENING_HOUR - 1) % 24
+        
         self.scheduler.add_job(
             self._send_prize_round_warning,
             CronTrigger(
-                hour=morning_warning_hour,
-                minute=-5,
+                hour=morning_warning_hour_actual,
+                minute=55,
                 timezone=settings.TIMEZONE
             ),
             kwargs={"round_type": "morning"},
@@ -71,8 +75,8 @@ class PrizeRoundScheduler:
         self.scheduler.add_job(
             self._send_prize_round_warning,
             CronTrigger(
-                hour=evening_warning_hour,
-                minute=-5,
+                hour=evening_warning_hour_actual,
+                minute=55,
                 timezone=settings.TIMEZONE
             ),
             kwargs={"round_type": "evening"},
