@@ -83,6 +83,10 @@ class CallbackHandlers:
             elif result["user"].streak > 1:
                 response_text += f"\n🔥 Streak: {result['user'].streak} days!"
             
+            # Add note if in read-only mode
+            if not db.has_write_access:
+                response_text += "\n\n📝 *Note: Running in read-only mode. Your answers are shown here but not saved.*"
+            
             if result["user"].user_type == UserType.FREE and result["user"].total_questions % 5 == 0:
                 response_text += "\n\n💎 **Upgrade to Premium** for more points and extra attempts!"
                 keyboard = Keyboards.subscribe_prompt()
@@ -108,6 +112,10 @@ class CallbackHandlers:
                 response_text += "Second attempt earns 80% of points.\n"
             else:
                 response_text += "Keep practicing! Every question helps you learn. 📚\n"
+            
+            # Add note if in read-only mode
+            if not db.has_write_access:
+                response_text += "\n📝 *Note: Running in read-only mode. Your answers are shown here but not saved.*"
             
             await query.edit_message_text(
                 response_text,

@@ -118,9 +118,14 @@ class QuestionManager:
             point_type=point_type,
             attempt_number=attempt_number,
         )
-        db.create_attempt(attempt)
         
-        db.update_user(user)
+        # Try to save attempt, but don't fail if in read-only mode
+        if not db.create_attempt(attempt):
+            logger.warning(f"Could not persist attempt for user {user.telegram_id} (read-only mode)")
+        
+        # Try to update user, but don't fail if in read-only mode
+        if not db.update_user(user):
+            logger.warning(f"Could not persist user updates for {user.telegram_id} (read-only mode)")
         
         del QuestionManager.active_questions[active_key]
         

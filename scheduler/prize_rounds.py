@@ -195,8 +195,8 @@ class PrizeRoundScheduler:
         from database.sheets_client import db
         
         try:
-            worksheet = db._get_worksheet("users")
-            records = worksheet.get_all_values()
+            # Use _get_worksheet_values which handles both write and read-only modes
+            records = db._get_worksheet_values("users")
             
             sent_count = 0
             failed_count = 0
