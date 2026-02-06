@@ -33,10 +33,24 @@ class QuestionManager:
         )
         
         if not question:
-            return None, (
-                "🎉 **You've answered all available questions!**\n\n"
-                "New questions are added daily. Check back soon!"
-            )
+            if db.has_write_access:
+                return None, (
+                    "🎉 **You've answered all available questions!**\n\n"
+                    "New questions are added daily. Check back soon!"
+                )
+            else:
+                return None, (
+                    "📚 **No questions available right now.**\n\n"
+                    "It looks like the question bank is empty. "
+                    "Please add questions to your Google Sheet to start playing.\n\n"
+                    "Questions go in the 'Questions' sheet with these columns:\n"
+                    "• question_id\n"
+                    "• question_text\n"
+                    "• option_a, option_b, option_c, option_d\n"
+                    "• correct_option (A/B/C/D)\n"
+                    "• difficulty, category, points, explanation\n\n"
+                    "Or provide credentials to enable the admin panel!"
+                )
         
         can_attempt, error, attempt_num = eligibility_checker.check_question_attempts(
             user, question.question_id
