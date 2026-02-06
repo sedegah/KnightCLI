@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class SheetsDatabase:
-    CACHE_FILE = "/app/leaderboard_cache.json"  # Persistent cache across restarts
+    CACHE_FILE = "leaderboard_cache.json"  # Cache in current directory (more portable)
     
     def __init__(self):
         self.client = None
@@ -119,26 +119,43 @@ class SheetsDatabase:
     
     def _load_cache(self):
         """Load persisted user cache from file on startup."""
+        if self.has_write_access:
+            return  # Don't use cache if we have write access
+            
         try:
-            if os.path.exists(self.CACHE_FILE) and not self.has_write_access:
+            if os.path.exists(self.CACHE_FILE):
                 with open(self.CACHE_FILE, 'r') as f:
                     cache_data = json.load(f)
+                    if not cache_data:
+                        return
+                    
                     for telegram_id_str, user_dict in cache_data.items():
-                        telegram_id = int(telegram_id_str)
-                        from database.models import User
-                        user = User(**user_dict)
-                        self._in_memory_users[telegram_id] = user
-                    logger.info(f"✓ Loaded {len(self._in_memory_users)} users from cache")
+                        try:
+                            telegram_id = int(telegram_id_str)
+                            from database.models import User
+                            user = User(**user_dict)
+                            self._in_memory_users[telegram_id] = user
+                        except Exception as e:
+                            logger.warning(f"Failed to load user {telegram_id_str} from cache: {e}")
+                            continue
+                    
+                    logger.info(f"✓ Loaded {len(self._in_memory_users)} users from persistent cache")
         except Exception as e:
             logger.warning(f"Could not load cache file: {e}")
     
     def _save_cache(self):
         """Persist user cache to file for survival across restarts."""
+        if self.has_write_access:
+            return  # Don't save cache if we have write access
+            
         try:
-            if not self.has_write_access and self._in_memory_users:
-                cache_data = {}
-                for telegram_id, user in self._in_memory_users.items():
-                    # Convert User object to dict by using to_row and reconstructing
+            if not self._in_memory_users:
+                return  # Nothing to save
+                
+            cache_data = {}
+            for telegram_id, user in self._in_memory_users.items():
+                try:
+                    # Convert User object to dict
                     cache_data[str(telegram_id)] = {
                         'telegram_id': user.telegram_id,
                         'username': user.username,
@@ -158,8 +175,13 @@ class SheetsDatabase:
                         'is_banned': user.is_banned,
                         'suspicious_flags': user.suspicious_flags,
                     }
-                with open(self.CACHE_FILE, 'w') as f:
-                    json.dump(cache_data, f, indent=2)
+                except Exception as e:
+                    logger.warning(f"Failed to serialize user {telegram_id}: {e}")
+                    continue
+            
+            with open(self.CACHE_FILE, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+            logger.debug(f"Saved {len(cache_data)} users to persistent cache")
         except Exception as e:
             logger.error(f"Error saving cache file: {e}")
     

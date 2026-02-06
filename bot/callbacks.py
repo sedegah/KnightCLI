@@ -172,12 +172,17 @@ class CallbackHandlers:
                 highlight_user_id=telegram_id
             )
             
-            user = db.get_user(telegram_id)
-            if user:
-                rank = db.get_user_rank(telegram_id)
-                if rank > 10:
-                    user_position = leaderboard_manager.get_user_position_text(user)
-                    leaderboard_text += f"\n\n---\n{user_position}"
+            # Safely get user rank without crashing if rank lookup fails
+            try:
+                user = db.get_user(telegram_id)
+                if user:
+                    rank = db.get_user_rank(telegram_id)
+                    if rank and rank > 10:
+                        user_position = leaderboard_manager.get_user_position_text(user)
+                        leaderboard_text += f"\n\n---\n{user_position}"
+            except Exception as e:
+                logger.warning(f"Could not get user rank for {telegram_id}: {e}")
+                # Continue without rank info rather than failing
             
             await query.edit_message_text(
                 leaderboard_text,
@@ -185,7 +190,7 @@ class CallbackHandlers:
                 parse_mode=ParseMode.MARKDOWN
             )
         except Exception as e:
-            logger.error(f"Error showing leaderboard: {e}")
+            logger.error(f"Error showing leaderboard: {e}", exc_info=True)
             await query.edit_message_text(
                 "⚠️ **Leaderboard Unavailable**\n\n"
                 "Unable to load the leaderboard right now. Please try again later.",
