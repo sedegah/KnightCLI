@@ -387,13 +387,32 @@ class SheetsDatabase:
             users = []
             
             # In read-only mode, use in-memory users
-            if not self.has_write_access and self._in_memory_users:
-                for telegram_id, user in self._in_memory_users.items():
-                    users.append({
-                        'telegram_id': user.telegram_id,
-                        'username': user.username,
-                        'weekly_points': user.weekly_points,
-                    })
+            if not self.has_write_access:
+                if self._in_memory_users:
+                    for telegram_id, user in self._in_memory_users.items():
+                        users.append({
+                            'telegram_id': user.telegram_id,
+                            'username': user.username,
+                            'weekly_points': user.weekly_points,
+                        })
+                # If no in-memory users, try to get from sheet
+                else:
+                    try:
+                        records = self._get_worksheet_values(SHEET_NAMES["users"])
+                        for row in records[1:]:
+                            if row and len(row) >= 6:
+                                try:
+                                    users.append({
+                                        'telegram_id': int(row[0]),
+                                        'username': row[1],
+                                        'weekly_points': int(row[5]),
+                                    })
+                                except:
+                                    continue
+                    except Exception as e:
+                        logger.warning(f"Could not fetch users from sheet in read-only mode: {e}")
+                        # Return empty leaderboard rather than crashing
+                        return []
             else:
                 # In write mode, get from sheet
                 records = self._get_worksheet_values(SHEET_NAMES["users"])
@@ -416,19 +435,23 @@ class SheetsDatabase:
             
             leaderboard = []
             for rank, user_data in enumerate(users[:limit], start=1):
-                entry = LeaderboardEntry(
-                    week_number=week_number,
-                    year=year,
-                    telegram_id=user_data['telegram_id'],
-                    username=user_data['username'],
-                    points=user_data['weekly_points'],
-                    rank=rank,
-                )
-                leaderboard.append(entry)
+                try:
+                    entry = LeaderboardEntry(
+                        week_number=week_number,
+                        year=year,
+                        telegram_id=user_data['telegram_id'],
+                        username=user_data['username'],
+                        points=user_data['weekly_points'],
+                        rank=rank,
+                    )
+                    leaderboard.append(entry)
+                except Exception as e:
+                    logger.warning(f"Could not create leaderboard entry for user {user_data.get('telegram_id')}: {e}")
+                    continue
             
             return leaderboard
         except Exception as e:
-            logger.error(f"Error getting leaderboard: {e}")
+            logger.error(f"Error getting leaderboard: {e}", exc_info=True)
             return []
     
     def get_user_rank(self, telegram_id: int) -> int:
