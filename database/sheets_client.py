@@ -185,6 +185,7 @@ class SheetsDatabase:
         except Exception as e:
             logger.error(f"Error saving cache file: {e}")
     
+    def get_user(self, telegram_id: int) -> Optional[User]:
         try:
             # Check in-memory cache first for read-only mode
             if not self.has_write_access and telegram_id in self._in_memory_users:
