@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class SheetsDatabase:
+    CACHE_FILE = "/app/leaderboard_cache.json"  # Persistent cache across restarts
+    
     def __init__(self):
         self.client = None
         self.spreadsheet = None
@@ -27,6 +29,7 @@ class SheetsDatabase:
         self.has_write_access = False
         self._in_memory_users = {}  # Cache for read-only mode
         self._connect()
+        self._load_cache()  # Load persisted data on startup
     
     def _connect(self):
         try:
@@ -114,8 +117,52 @@ class SheetsDatabase:
             logger.error(f"Error fetching sheet {sheet_name}: {e}")
             return []
     
+    def _load_cache(self):
+        """Load persisted user cache from file on startup."""
+        try:
+            if os.path.exists(self.CACHE_FILE) and not self.has_write_access:
+                with open(self.CACHE_FILE, 'r') as f:
+                    cache_data = json.load(f)
+                    for telegram_id_str, user_dict in cache_data.items():
+                        telegram_id = int(telegram_id_str)
+                        from database.models import User
+                        user = User(**user_dict)
+                        self._in_memory_users[telegram_id] = user
+                    logger.info(f"✓ Loaded {len(self._in_memory_users)} users from cache")
+        except Exception as e:
+            logger.warning(f"Could not load cache file: {e}")
     
-    def get_user(self, telegram_id: int) -> Optional[User]:
+    def _save_cache(self):
+        """Persist user cache to file for survival across restarts."""
+        try:
+            if not self.has_write_access and self._in_memory_users:
+                cache_data = {}
+                for telegram_id, user in self._in_memory_users.items():
+                    # Convert User object to dict by using to_row and reconstructing
+                    cache_data[str(telegram_id)] = {
+                        'telegram_id': user.telegram_id,
+                        'username': user.username,
+                        'full_name': user.full_name,
+                        'ap': user.ap,
+                        'pp': user.pp,
+                        'weekly_points': user.weekly_points,
+                        'streak': user.streak,
+                        'last_played_date': user.last_played_date,
+                        'subscription_status': user.subscription_status,
+                        'subscription_expires': user.subscription_expires,
+                        'total_questions': user.total_questions,
+                        'correct_answers': user.correct_answers,
+                        'created_at': user.created_at,
+                        'referral_code': user.referral_code,
+                        'referred_by': user.referred_by,
+                        'is_banned': user.is_banned,
+                        'suspicious_flags': user.suspicious_flags,
+                    }
+                with open(self.CACHE_FILE, 'w') as f:
+                    json.dump(cache_data, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving cache file: {e}")
+    
         try:
             # Check in-memory cache first for read-only mode
             if not self.has_write_access and telegram_id in self._in_memory_users:
@@ -151,6 +198,7 @@ class SheetsDatabase:
                 logger.warning(f"Storing user {telegram_id} in memory (read-only mode)")
                 # Cache in memory for read-only mode
                 self._in_memory_users[telegram_id] = user
+                self._save_cache()  # Persist cache to survive restarts
                 return user
             
             worksheet = self._get_worksheet(SHEET_NAMES["users"])
@@ -168,6 +216,7 @@ class SheetsDatabase:
             logger.warning(f"Updating user {user.telegram_id} in memory (read-only mode)")
             # Update in-memory cache
             self._in_memory_users[user.telegram_id] = user
+            self._save_cache()  # Persist cache to survive restarts
             return True
         
         try:
