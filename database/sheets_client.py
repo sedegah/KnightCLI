@@ -312,19 +312,33 @@ class SheetsDatabase:
             week_number = now.isocalendar()[1]
             year = now.year
             
-            records = self._get_worksheet_values(SHEET_NAMES["users"])
-            
             users = []
-            for row in records[1:]:
-                if row and len(row) >= 6:
-                    try:
-                        users.append({
-                            'telegram_id': int(row[0]),
-                            'username': row[1],
-                            'weekly_points': int(row[5]),
-                        })
-                    except:
-                        continue
+            
+            # In read-only mode, use in-memory users
+            if not self.has_write_access and self._in_memory_users:
+                for telegram_id, user in self._in_memory_users.items():
+                    users.append({
+                        'telegram_id': user.telegram_id,
+                        'username': user.username,
+                        'weekly_points': user.weekly_points,
+                    })
+            else:
+                # In write mode, get from sheet
+                records = self._get_worksheet_values(SHEET_NAMES["users"])
+                
+                for row in records[1:]:
+                    if row and len(row) >= 6:
+                        try:
+                            users.append({
+                                'telegram_id': int(row[0]),
+                                'username': row[1],
+                                'weekly_points': int(row[5]),
+                            })
+                        except:
+                            continue
+            
+            if not users:
+                return []
             
             users.sort(key=lambda x: x['weekly_points'], reverse=True)
             

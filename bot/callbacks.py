@@ -155,34 +155,43 @@ class CallbackHandlers:
         query = update.callback_query
         telegram_id = update.effective_user.id
         
-        leaderboard = leaderboard_manager.get_current_leaderboard(limit=10)
-        
-        if not leaderboard:
+        try:
+            leaderboard = leaderboard_manager.get_current_leaderboard(limit=10)
+            
+            if not leaderboard:
+                await query.edit_message_text(
+                    "🏆 **Leaderboard**\n\n"
+                    "No players yet this week. Be the first!",
+                    reply_markup=Keyboards.leaderboard_actions(),
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+            
+            leaderboard_text = leaderboard_manager.format_leaderboard_text(
+                leaderboard,
+                highlight_user_id=telegram_id
+            )
+            
+            user = db.get_user(telegram_id)
+            if user:
+                rank = db.get_user_rank(telegram_id)
+                if rank > 10:
+                    user_position = leaderboard_manager.get_user_position_text(user)
+                    leaderboard_text += f"\n\n---\n{user_position}"
+            
             await query.edit_message_text(
-                "🏆 **Leaderboard**\n\n"
-                "No players yet this week. Be the first!",
+                leaderboard_text,
                 reply_markup=Keyboards.leaderboard_actions(),
                 parse_mode=ParseMode.MARKDOWN
             )
-            return
-        
-        leaderboard_text = leaderboard_manager.format_leaderboard_text(
-            leaderboard,
-            highlight_user_id=telegram_id
-        )
-        
-        user = db.get_user(telegram_id)
-        if user:
-            rank = db.get_user_rank(telegram_id)
-            if rank > 10:
-                user_position = leaderboard_manager.get_user_position_text(user)
-                leaderboard_text += f"\n\n---\n{user_position}"
-        
-        await query.edit_message_text(
-            leaderboard_text,
-            reply_markup=Keyboards.leaderboard_actions(),
-            parse_mode=ParseMode.MARKDOWN
-        )
+        except Exception as e:
+            logger.error(f"Error showing leaderboard: {e}")
+            await query.edit_message_text(
+                "⚠️ **Leaderboard Unavailable**\n\n"
+                "Unable to load the leaderboard right now. Please try again later.",
+                reply_markup=Keyboards.main_menu(),
+                parse_mode=ParseMode.MARKDOWN
+            )
     
     @staticmethod
     async def _handle_show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
