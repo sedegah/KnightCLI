@@ -1,6 +1,8 @@
 import logging
 import sys
 import signal
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -34,6 +36,41 @@ async def error_handler(update: Update, context):
             )
     except Exception as e:
         logger.error(f"Error in error handler: {e}")
+
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler for health checks."""
+    
+    def do_GET(self):
+        if self.path == "/health" or self.path == "/":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        # Suppress default HTTP server logging
+        pass
+
+
+def start_health_check_server():
+    """Start HTTP server on configured port for Render health checks."""
+    try:
+        server = HTTPServer(("0.0.0.0", settings.PORT), HealthCheckHandler)
+        logger.info(f"Health check server starting on port {settings.PORT}")
+        
+        # Run server in daemon thread so it doesn't block bot
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+        
+        logger.info(f"✓ Health check server running on port {settings.PORT}")
+        return server
+    except Exception as e:
+        logger.error(f"Failed to start health check server: {e}")
+        return None
 
 
 async def post_init(application: Application):
@@ -100,6 +137,9 @@ def main():
         .post_shutdown(post_shutdown)
         .build()
     )
+    
+    # Start health check server for port binding
+    health_server = start_health_check_server()
     
     logger.info("Registering handlers...")
     

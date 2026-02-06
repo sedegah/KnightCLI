@@ -36,6 +36,9 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
+    # Server configuration for health checks
+    PORT: int = int(os.getenv("PORT", "8080"))
+    
     @classmethod
     def validate(cls) -> List[str]:
         errors = []
