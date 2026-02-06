@@ -81,6 +81,16 @@ def main():
         sys.exit(1)
     logger.info("✓ Database connection OK")
     
+    if not db.has_write_access:
+        logger.warning("")
+        logger.warning("⚠️  READ-ONLY MODE ENABLED ⚠️")
+        logger.warning("Database is operating in read-only mode because no service account credentials were provided.")
+        logger.warning("User data will NOT be persisted. To enable full functionality:")
+        logger.warning("  1. Create a service account in Google Cloud Console")
+        logger.warning("  2. Share your Google Sheet with the service account email")
+        logger.warning("  3. Provide credentials via GOOGLE_CREDENTIALS_JSON environment variable")
+        logger.warning("")
+    
     logger.info(f"Creating bot application...")
     application = (
         Application.builder()

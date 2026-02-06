@@ -49,6 +49,25 @@ class BotHandlers:
                 referred_by=referred_by
             )
             
+            if user is None:
+                await update.message.reply_text(
+                    "⚠️ **Database Configuration Required**\n\n"
+                    "This bot requires Google Sheets credentials to save user data. "
+                    "Please provide service account credentials to enable full functionality.\n\n"
+                    "For now, you can still try some features, but your progress won't be saved.",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=Keyboards.main_menu()
+                )
+                logger.warning(f"User {telegram_id} created in memory only (no persistence)")
+                # Create a temporary user object for this session
+                user = db.create_user(
+                    telegram_id=telegram_id,
+                    username=username,
+                    full_name=full_name,
+                    referred_by=referred_by
+                )
+                return
+            
             if referred_by:
                 from database.models import Referral
                 referrer = db.get_user_by_referral_code(referred_by)

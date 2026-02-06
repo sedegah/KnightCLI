@@ -24,6 +24,7 @@ class SheetsDatabase:
         self.client = None
         self.spreadsheet = None
         self.use_api_only = False
+        self.has_write_access = False
         self._connect()
     
     def _connect(self):
@@ -48,10 +49,14 @@ class SheetsDatabase:
                 self.client = gspread.authorize(creds)
                 self.spreadsheet = self.client.open_by_key(settings.SPREADSHEET_ID)
                 self.use_api_only = False
+                self.has_write_access = True
+                logger.info("Connected to Google Sheets with write access")
             else:
-                # For public spreadsheets, use Google Sheets API directly
+                # For public spreadsheets, use Google Sheets API directly (read-only)
                 self.use_api_only = True
+                self.has_write_access = False
                 self._verify_public_sheet_access()
+                logger.warning("Connected to Google Sheets in READ-ONLY mode. User creation and data updates will not be saved.")
             
             logger.info("Connected to Google Sheets successfully")
         except Exception as e:
@@ -122,7 +127,7 @@ class SheetsDatabase:
             return None
     
     def create_user(self, telegram_id: int, username: str, full_name: str, 
-                    referred_by: str = "") -> User:
+                    referred_by: str = "") -> Optional[User]:
         try:
             referral_code = self._generate_referral_code()
             user = User(
@@ -133,6 +138,11 @@ class SheetsDatabase:
                 referred_by=referred_by,
             )
             
+            if not self.has_write_access:
+                logger.warning(f"Cannot create user {telegram_id}: Database is in read-only mode. Provide service account credentials for full access.")
+                # Return the user object anyway so the bot can continue, but don't persist it
+                return user
+            
             worksheet = self._get_worksheet(SHEET_NAMES["users"])
             worksheet.append_row(user.to_row())
             
@@ -140,9 +150,14 @@ class SheetsDatabase:
             return user
         except Exception as e:
             logger.error(f"Error creating user: {e}")
-            raise
+            # Return None to indicate failure
+            return None
     
     def update_user(self, user: User) -> bool:
+        if not self.has_write_access:
+            logger.warning(f"Cannot update user {user.telegram_id}: Database is in read-only mode")
+            return False
+        
         try:
             worksheet = self._get_worksheet(SHEET_NAMES["users"])
             records = worksheet.get_all_values()
@@ -161,8 +176,7 @@ class SheetsDatabase:
     
     def get_user_by_referral_code(self, code: str) -> Optional[User]:
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["users"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["users"])
             
             for row in records[1:]:
                 if row and len(row) > 13 and row[13] == code:
@@ -177,8 +191,7 @@ class SheetsDatabase:
                            user_telegram_id: int,
                            exclude_answered: bool = True) -> Optional[Question]:
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["questions"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["questions"])
             
             answered_ids = set()
             if exclude_answered:
@@ -217,6 +230,10 @@ class SheetsDatabase:
     
     
     def create_attempt(self, attempt: Attempt) -> bool:
+        if not self.has_write_access:
+            logger.warning(f"Cannot create attempt {attempt.attempt_id}: Database is in read-only mode")
+            return False
+        
         try:
             worksheet = self._get_worksheet(SHEET_NAMES["attempts"])
             worksheet.append_row(attempt.to_row())
@@ -242,8 +259,7 @@ class SheetsDatabase:
     
     def get_user_hourly_attempts(self, telegram_id: int) -> int:
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["attempts"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["attempts"])
             
             one_hour_ago = datetime.utcnow() - timedelta(hours=1)
             count = 0
@@ -265,8 +281,7 @@ class SheetsDatabase:
     def _get_answered_question_ids(self, telegram_id: int) -> set:
         """Get all questions answered by a user."""
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["attempts"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["attempts"])
             
             answered = set()
             for row in records[1:]:
@@ -285,8 +300,7 @@ class SheetsDatabase:
             week_number = now.isocalendar()[1]
             year = now.year
             
-            worksheet = self._get_worksheet(SHEET_NAMES["users"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["users"])
             
             users = []
             for row in records[1:]:
@@ -332,6 +346,10 @@ class SheetsDatabase:
     
     def save_weekly_leaderboard(self, leaderboard: List[LeaderboardEntry]) -> bool:
         try:
+            if not self.has_write_access:
+                logger.warning(f"Cannot save leaderboard: Database is in read-only mode")
+                return False
+                
             worksheet = self._get_worksheet(SHEET_NAMES["leaderboard"])
             rows = [entry.to_row() for entry in leaderboard]
             worksheet.append_rows(rows)
@@ -342,6 +360,10 @@ class SheetsDatabase:
             return False
     
     def reset_weekly_points(self) -> bool:
+        if not self.has_write_access:
+            logger.warning(f"Cannot reset weekly points: Database is in read-only mode")
+            return False
+        
         try:
             worksheet = self._get_worksheet(SHEET_NAMES["users"])
             records = worksheet.get_all_values()
@@ -357,6 +379,10 @@ class SheetsDatabase:
     
     
     def create_referral(self, referral: Referral) -> bool:
+        if not self.has_write_access:
+            logger.warning(f"Cannot create referral {referral.referral_code}: Database is in read-only mode")
+            return False
+        
         try:
             worksheet = self._get_worksheet(SHEET_NAMES["referrals"])
             worksheet.append_row(referral.to_row())
@@ -368,8 +394,7 @@ class SheetsDatabase:
     
     def get_referral_count(self, telegram_id: int) -> int:
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["referrals"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["referrals"])
             
             count = 0
             for row in records[1:]:
@@ -382,6 +407,10 @@ class SheetsDatabase:
             return 0
     
     def update_referral_qualification(self, referred_telegram_id: int) -> bool:
+        if not self.has_write_access:
+            logger.warning(f"Cannot update referral qualification for {referred_telegram_id}: Database is in read-only mode")
+            return False
+        
         try:
             worksheet = self._get_worksheet(SHEET_NAMES["referrals"])
             records = worksheet.get_all_values()
