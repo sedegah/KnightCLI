@@ -111,8 +111,7 @@ class SheetsDatabase:
     
     def get_user(self, telegram_id: int) -> Optional[User]:
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["users"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["users"])
             
             for i, row in enumerate(records[1:], start=2):
                 if row and row[0] == str(telegram_id):
@@ -206,8 +205,7 @@ class SheetsDatabase:
     
     def get_question(self, question_id: str) -> Optional[Question]:
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["questions"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["questions"])
             
             for row in records[1:]:
                 if row and row[0] == question_id:
@@ -230,8 +228,7 @@ class SheetsDatabase:
     
     def get_user_attempts_count(self, telegram_id: int, question_id: str) -> int:
         try:
-            worksheet = self._get_worksheet(SHEET_NAMES["attempts"])
-            records = worksheet.get_all_values()
+            records = self._get_worksheet_values(SHEET_NAMES["attempts"])
             
             count = 0
             for row in records[1:]:
