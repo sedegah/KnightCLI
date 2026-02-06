@@ -16,6 +16,7 @@ class User:
     last_played_date: Optional[str] = None
     subscription_status: str = UserType.FREE.value
     subscription_expires: Optional[str] = None
+    streak_freezes_remaining: int = 0  # Premium feature: preserve streak
     total_questions: int = 0
     correct_answers: int = 0
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
@@ -211,7 +212,9 @@ class LeaderboardEntry:
     rank: int
     reward_type: Optional[str] = None
     reward_value: Optional[str] = None
-    reward_status: str = "pending"
+    reward_status: str = "pending"  # pending, approved, paid
+    approved_by: Optional[str] = None
+    approval_date: Optional[str] = None
     
     def to_row(self) -> List:
         return [
@@ -224,6 +227,8 @@ class LeaderboardEntry:
             self.reward_type or "",
             self.reward_value or "",
             self.reward_status,
+            self.approved_by or "",
+            self.approval_date or "",
         ]
     
     @classmethod
@@ -238,6 +243,8 @@ class LeaderboardEntry:
             reward_type=row[6] if len(row) > 6 and row[6] else None,
             reward_value=row[7] if len(row) > 7 and row[7] else None,
             reward_status=row[8] if len(row) > 8 and row[8] else "pending",
+            approved_by=row[9] if len(row) > 9 and row[9] else None,
+            approval_date=row[10] if len(row) > 10 and row[10] else None,
         )
 
 

@@ -15,6 +15,7 @@ from telegram.ext import (
 from config.settings import settings
 from bot.handlers import bot_handlers
 from bot.callbacks import callback_handlers
+from bot.admin_commands import admin_commands
 from scheduler.prize_rounds import PrizeRoundScheduler
 from scheduler.reminders import ReminderScheduler
 from database.sheets_client import db
@@ -287,6 +288,11 @@ def main():
     application.add_handler(CommandHandler("invite", bot_handlers.invite_command))
     application.add_handler(CommandHandler("subscribe", bot_handlers.subscribe_command))
     application.add_handler(CommandHandler("help", bot_handlers.help_command))
+    
+    # Admin commands (Phase 1: Manual reward approval)
+    application.add_handler(CommandHandler("approve_reward", admin_commands.approve_reward))
+    application.add_handler(CommandHandler("pending_rewards", admin_commands.list_pending_rewards))
+    application.add_handler(CommandHandler("mark_paid", admin_commands.mark_paid))
     
     application.add_handler(CallbackQueryHandler(callback_handlers.handle_callback))
     

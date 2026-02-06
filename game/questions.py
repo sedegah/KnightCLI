@@ -178,9 +178,10 @@ class QuestionManager:
     
     @staticmethod
     def format_question_text(question: Question, question_number: int = 1) -> str:
+        # Phase 1 Monetization: Sponsor branding
         sponsor_tag = ""
         if question.sponsor_name:
-            sponsor_tag = f"\n\n_Presented by {question.sponsor_name}_"
+            sponsor_tag = f"\n\n💼 **Sponsored by {question.sponsor_name}**"
         
         text = f"❓ **Question {question_number}**\n\n"
         text += f"{question.question_text}\n\n"

@@ -2,22 +2,144 @@
 
 A gamified quiz platform on Telegram with continuous play mechanics and scheduled prize rounds.
 
+## 🎯 Current Status: MVP Phase
+
+**What We Have:**
+- ✅ Buildable MVP (Ready to launch)
+- ✅ Scalable architecture (Migration-ready)
+- ✅ Clear roadmap (Phase 1-3 planned)
+- ✅ Defensible product story
+
+**Launch Timeline:** 30 days to production
+
 ## Features
 
+### Core Gameplay
 - **Continuous Play**: Answer questions throughout the day to earn Accumulated Points (AP)
 - **Prize Rounds**: Compete in twice-daily high-stakes rounds for rewards
 - **Two Player Tiers**: Free users and Premium subscribers with different benefits
 - **Leaderboards**: Weekly rankings with rewards
-- **Anti-Cheat**: Rate limiting, answer locking, and suspicious behavior detection
 - **Streak System**: Bonus points for consistent daily engagement
-- **Sponsor Integration**: Branded questions and rewards
+
+### Anti-Cheat (MVP-Level, Phase 1)
+✅ **Implemented:**
+- One question per ID (prevents duplicate answers)
+- Answer locking (timestamp-based validation)
+- Suspicious speed detection (minimum 2-second answer time)
+- Accuracy-based flagging (automatic review triggers)
+- **Manual reward approval** (admin verification before payout)
+
+**Protection Level:** Effective for early rewards without complexity
+
+### Monetization Strategy
+
+#### Phase 1 (Current - MVP)
+- ✅ **Sponsored Questions**: Brand tags displayed on questions
+- ✅ **Brand Display**: Sponsor names shown prominently
+- ✅ **Premium Subscriptions**: $4.99/month
+  - Higher points per answer
+  - Increased hourly limits
+  - Speed bonuses
+
+#### Phase 2 (Post-Launch)
+- 🔜 **Premium Features**:
+  - Streak freeze (preserve streak when missed)
+  - Extra daily quiz
+  - Advanced statistics
+- 🔜 **Enhanced Analytics**
+
+#### Phase 3 (Scale)
+- 🔮 **Paid Tournaments**
+- 🔮 **Brand Dashboards** (sponsor analytics)
+- 🔮 **Mini-App Ads**
 
 ## Architecture
 
+### Current Stack (MVP)
 - **Bot Interface**: python-telegram-bot
-- **Database**: Google Sheets (MVP) → PostgreSQL (Scale)
+- **Database**: Google Sheets (MVP-friendly, quick setup)
 - **Scheduler**: APScheduler for prize rounds and reminders
-- **Integration**: Ready for Make.com automation
+- **Integration**: Make.com automation ready
+- **Deployment**: Docker containerized, Render hosting
+
+### Migration Path (When Scaling)
+
+| Component | MVP (Now) | Scaled (Future) |
+|-----------|-----------|-----------------|
+| Database | Google Sheets | PostgreSQL |
+| Backend | Make.com | FastAPI/Node.js Backend API |
+| Interface | Bot only | Bot + Mini-App |
+| Payments | Manual payouts | Automated payment system |
+| Logic | ✅ Ready | ✅ Already designed for migration |
+
+**Key Insight:** Logic stays the same. Only the engine changes.
+
+### Why This Approach Works
+1. **Fast MVP Launch**: Get to market in 30 days
+2. **Validate Product-Market Fit**: Test with real users before heavy investment
+3. **Scale When Ready**: Migrate components as user base grows
+4. **Preserve Investment**: Business logic remains intact during migration
+
+## Setup
+
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed installation instructions.
+
+## Deployment
+
+The bot is containerized and ready for deployment on:
+- Render (current)
+- Heroku
+- Railway
+- Any Docker-compatible platform
+
+## Roadmap
+
+### Immediate (Week 1-4)
+- [x] Core gameplay functionality
+- [x] Anti-cheat system (MVP level)
+- [x] Manual reward approval
+- [x] Sponsored question support
+- [ ] Launch to first 100 users
+
+### Short-term (Month 2-3)
+- [ ] Premium feature: Streak freeze
+- [ ] Premium feature: Bonus quizzes
+- [ ] Enhanced analytics dashboard
+- [ ] First brand partnership
+
+### Medium-term (Month 4-6)
+- [ ] Migration to PostgreSQL
+- [ ] Backend API development
+- [ ] Mini-App interface
+- [ ] Automated payment processing
+
+### Long-term (Month 7+)
+- [ ] Tournament system
+- [ ] Brand dashboard
+- [ ] Advanced analytics
+- [ ] Multi-language support
+
+## Business Model
+
+### Revenue Streams
+1. **Premium Subscriptions**: $4.99/month recurring revenue
+2. **Sponsored Questions**: Brand partnerships
+3. **Tournament Entry**: Paid competitive events (Phase 3)
+4. **Platform Ads**: Mini-App advertising (Phase 3)
+
+### Go-to-Market
+- **Organic Growth**: Telegram Bot Discovery
+- **Referral System**: Built-in viral mechanics
+- **Brand Partnerships**: Sponsored content from day 1
+- **Community Building**: Engagement through daily prizes
+
+## Contributing
+
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for development setup.
+
+## License
+
+Proprietary - All rights reserved
 
 ## Quick Start
 
