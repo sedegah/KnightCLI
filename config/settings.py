@@ -35,6 +35,19 @@ class Settings:
     
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
+    # PostgreSQL connection (when enabled)
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "5"))
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+    DB_POOL_TIMEOUT: int = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+    DB_POOL_RECYCLE: int = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+    DB_POOL_PRE_PING: bool = os.getenv("DB_POOL_PRE_PING", "True").lower() == "true"
+    DB_CONNECT_TIMEOUT: int = int(os.getenv("DB_CONNECT_TIMEOUT", "10"))
+    DB_TCP_KEEPALIVES: bool = os.getenv("DB_TCP_KEEPALIVES", "True").lower() == "true"
+    DB_KEEPALIVES_IDLE: int = int(os.getenv("DB_KEEPALIVES_IDLE", "30"))
+    DB_KEEPALIVES_INTERVAL: int = int(os.getenv("DB_KEEPALIVES_INTERVAL", "10"))
+    DB_KEEPALIVES_COUNT: int = int(os.getenv("DB_KEEPALIVES_COUNT", "5"))
     
     # Server configuration for health checks
     PORT: int = int(os.getenv("PORT", "8080"))
