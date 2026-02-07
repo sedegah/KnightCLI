@@ -1,4 +1,5 @@
 from telegram import Update
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 import logging
@@ -15,6 +16,29 @@ logger = logging.getLogger(__name__)
 
 
 class CallbackHandlers:
+    @staticmethod
+    async def _safe_edit_message(query, text: str, reply_markup=None, parse_mode=None):
+        try:
+            await query.edit_message_text(
+                text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+        except BadRequest as e:
+            error_text = str(e).lower()
+            if "message is not modified" in error_text:
+                await query.answer("Already up to date.")
+                return
+            if "message can't be edited" in error_text or "message to edit not found" in error_text:
+                if query.message:
+                    await query.message.reply_text(
+                        text,
+                        reply_markup=reply_markup,
+                        parse_mode=parse_mode
+                    )
+                return
+            raise
+
     @staticmethod
     async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
@@ -38,7 +62,7 @@ class CallbackHandlers:
         elif callback_data == "retry_question":
             await CallbackHandlers._handle_retry_question(update, context)
         else:
-            await query.edit_message_text("Unknown action. Please try again.")
+            await CallbackHandlers._safe_edit_message(query, "Unknown action. Please try again.")
     
     @staticmethod
     async def _handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -66,7 +90,7 @@ class CallbackHandlers:
         
         if not success:
             error_msg = result.get("error", "Failed to process answer")
-            await query.edit_message_text(error_msg)
+            await CallbackHandlers._safe_edit_message(query, error_msg)
             return
         
         if result["is_correct"]:
@@ -94,7 +118,8 @@ class CallbackHandlers:
                 response_text += "\n\nKeep playing to climb the leaderboard! 🚀"
                 keyboard = Keyboards.continue_playing()
             
-            await query.edit_message_text(
+            await CallbackHandlers._safe_edit_message(
+                query,
                 response_text,
                 reply_markup=keyboard,
                 parse_mode=ParseMode.MARKDOWN
@@ -117,7 +142,8 @@ class CallbackHandlers:
             if not db.has_write_access:
                 response_text += "\n📝 *Note: Running in read-only mode. Your answers are shown here but not saved.*"
             
-            await query.edit_message_text(
+            await CallbackHandlers._safe_edit_message(
+                query,
                 response_text,
                 reply_markup=Keyboards.retry_or_continue(has_2nd_attempt),
                 parse_mode=ParseMode.MARKDOWN
@@ -130,13 +156,14 @@ class CallbackHandlers:
         
         user = db.get_user(telegram_id)
         if not user:
-            await query.edit_message_text("Please use /start to register first!")
+            await CallbackHandlers._safe_edit_message(query, "Please use /start to register first!")
             return
         
         question, error = question_manager.get_question_for_user(user, is_prize_round=False)
         
         if error:
-            await query.edit_message_text(
+            await CallbackHandlers._safe_edit_message(
+                query,
                 error,
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=Keyboards.subscribe_prompt() if "Rate Limit" in error else None
@@ -144,7 +171,8 @@ class CallbackHandlers:
             return
         
         question_text = question_manager.format_question_text(question)
-        await query.edit_message_text(
+        await CallbackHandlers._safe_edit_message(
+            query,
             question_text,
             reply_markup=Keyboards.question_options(question),
             parse_mode=ParseMode.MARKDOWN
@@ -159,7 +187,8 @@ class CallbackHandlers:
             leaderboard = leaderboard_manager.get_current_leaderboard(limit=10)
             
             if not leaderboard:
-                await query.edit_message_text(
+                await CallbackHandlers._safe_edit_message(
+                    query,
                     "🏆 **Leaderboard**\n\n"
                     "No players yet this week. Be the first!",
                     reply_markup=Keyboards.leaderboard_actions(),
@@ -184,14 +213,16 @@ class CallbackHandlers:
                 logger.warning(f"Could not get user rank for {telegram_id}: {e}")
                 # Continue without rank info rather than failing
             
-            await query.edit_message_text(
+            await CallbackHandlers._safe_edit_message(
+                query,
                 leaderboard_text,
                 reply_markup=Keyboards.leaderboard_actions(),
                 parse_mode=ParseMode.MARKDOWN
             )
         except Exception as e:
             logger.error(f"Error showing leaderboard: {e}", exc_info=True)
-            await query.edit_message_text(
+            await CallbackHandlers._safe_edit_message(
+                query,
                 "⚠️ **Leaderboard Unavailable**\n\n"
                 "Unable to load the leaderboard right now. Please try again later.",
                 reply_markup=Keyboards.main_menu(),
@@ -205,7 +236,7 @@ class CallbackHandlers:
         
         user = db.get_user(telegram_id)
         if not user:
-            await query.edit_message_text("Please use /start to register first!")
+            await CallbackHandlers._safe_edit_message(query, "Please use /start to register first!")
             return
         
         rank = db.get_user_rank(telegram_id)
@@ -225,7 +256,8 @@ class CallbackHandlers:
             rank=rank_text
         )
         
-        await query.edit_message_text(
+        await CallbackHandlers._safe_edit_message(
+            query,
             stats_text,
             reply_markup=Keyboards.stats_actions(),
             parse_mode=ParseMode.MARKDOWN
@@ -235,7 +267,8 @@ class CallbackHandlers:
     async def _handle_subscribe_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         
-        await query.edit_message_text(
+        await CallbackHandlers._safe_edit_message(
+            query,
             MESSAGES["subscribe_info"],
             parse_mode=ParseMode.MARKDOWN
         )
@@ -247,7 +280,8 @@ class CallbackHandlers:
         
         user = db.get_user(telegram_id)
         if not user or not user.is_subscriber:
-            await query.edit_message_text(
+            await CallbackHandlers._safe_edit_message(
+                query,
                 "This feature is only available for Premium subscribers.\n\n"
                 "Tap /subscribe to learn more!",
                 parse_mode=ParseMode.MARKDOWN
