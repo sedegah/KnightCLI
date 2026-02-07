@@ -193,20 +193,19 @@ class PrizeRoundScheduler:
             message: Message text to send
         """
         from database.sheets_client import db
-        
+
         try:
-            # Use _get_worksheet_values which handles both write and read-only modes
-            records = db._get_worksheet_values("users")
-            
+            users = db.get_users_for_notifications()
+
             sent_count = 0
             failed_count = 0
-            
-            for row in records[1:]:
-                if not row or len(row) < 1:
+
+            for user in users:
+                telegram_id = user.get("telegram_id")
+                if not telegram_id:
                     continue
-                
+
                 try:
-                    telegram_id = int(row[0])
                     await self.bot.send_message(
                         chat_id=telegram_id,
                         text=message,
@@ -216,9 +215,9 @@ class PrizeRoundScheduler:
                 except Exception as e:
                     failed_count += 1
                     logger.warning(f"Failed to send to {telegram_id}: {e}")
-            
+
             logger.info(f"Broadcast complete: {sent_count} sent, {failed_count} failed")
-        
+
         except Exception as e:
             logger.error(f"Broadcast failed: {e}")
     

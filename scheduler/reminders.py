@@ -42,48 +42,46 @@ class ReminderScheduler:
         logger.info("Starting daily reminder process")
         
         try:
-            worksheet = db._get_worksheet("users")
-            records = worksheet.get_all_values()
-            
+            users = db.get_users_for_notifications()
+
             today = datetime.utcnow().date()
             sent_count = 0
-            
-            for row in records[1:]:
-                if not row or len(row) < 8:
+
+            for user in users:
+                telegram_id = user.get("telegram_id")
+                if not telegram_id:
                     continue
-                
+
                 try:
-                    telegram_id = int(row[0])
-                    username = row[1]
-                    streak = int(row[6]) if row[6] else 0
-                    last_played = row[7]
-                    
+                    streak = int(user.get("streak") or 0)
+                    last_played = user.get("last_played_date")
+
                     if last_played:
                         try:
                             last_played_date = datetime.fromisoformat(last_played).date()
                             if last_played_date >= today:
                                 continue
-                        except:
+                        except Exception:
                             pass
-                    
+
                     reminder_text = MESSAGES["daily_reminder"].format(
                         streak=streak
                     )
-                    
+
                     await self.bot.send_message(
                         chat_id=telegram_id,
                         text=reminder_text,
                         parse_mode="Markdown"
                     )
-                    
+
                     sent_count += 1
-                    logger.info(f"Sent reminder to {telegram_id} ({username})")
-                
+                    logger.info(f"Sent reminder to {telegram_id}")
+
                 except Exception as e:
-                    logger.warning(f"Failed to send reminder: {e}")
-            
+                    logger.warning(f"Failed to send reminder to {telegram_id}: {e}")
+
             logger.info(f"Daily reminders sent: {sent_count}")
-        
+
         except Exception as e:
             logger.error(f"Daily reminder process failed: {e}")
     

@@ -205,6 +205,46 @@ class SheetsDatabase:
         except Exception as e:
             logger.error(f"Error getting user {telegram_id}: {e}")
             return None
+
+    def get_users_for_notifications(self) -> List[Dict[str, Optional[str]]]:
+        """Return minimal user data for notifications.
+
+        In read-only mode, this uses the in-memory cache only.
+        """
+        users: List[Dict[str, Optional[str]]] = []
+
+        if not self.has_write_access:
+            for user in self._in_memory_users.values():
+                users.append(
+                    {
+                        "telegram_id": user.telegram_id,
+                        "username": user.username,
+                        "streak": user.streak,
+                        "last_played_date": user.last_played_date,
+                    }
+                )
+            return users
+
+        try:
+            records = self._get_worksheet_values(SHEET_NAMES["users"])
+            for row in records[1:]:
+                if not row or len(row) < 8:
+                    continue
+                try:
+                    users.append(
+                        {
+                            "telegram_id": int(row[0]),
+                            "username": row[1],
+                            "streak": int(row[6]) if row[6] else 0,
+                            "last_played_date": row[7] if row[7] else None,
+                        }
+                    )
+                except Exception:
+                    continue
+            return users
+        except Exception as e:
+            logger.error(f"Error getting users for notifications: {e}")
+            return []
     
     def create_user(self, telegram_id: int, username: str, full_name: str, 
                     referred_by: str = "") -> Optional[User]:
