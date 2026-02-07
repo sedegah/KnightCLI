@@ -48,6 +48,9 @@ class Settings:
     DB_KEEPALIVES_IDLE: int = int(os.getenv("DB_KEEPALIVES_IDLE", "30"))
     DB_KEEPALIVES_INTERVAL: int = int(os.getenv("DB_KEEPALIVES_INTERVAL", "10"))
     DB_KEEPALIVES_COUNT: int = int(os.getenv("DB_KEEPALIVES_COUNT", "5"))
+
+    # Read-only mode cache (persist across restarts when using Render disk)
+    READONLY_USER_CACHE_PATH: str = os.getenv("READONLY_USER_CACHE_PATH", "user_cache.json")
     
     # Server configuration for health checks
     PORT: int = int(os.getenv("PORT", "8080"))

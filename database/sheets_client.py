@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class SheetsDatabase:
-    CACHE_FILE = "leaderboard_cache.json"  # Cache in current directory (more portable)
+    DEFAULT_CACHE_FILE = "user_cache.json"
     
     def __init__(self):
         self.client = None
@@ -28,6 +28,7 @@ class SheetsDatabase:
         self.use_api_only = False
         self.has_write_access = False
         self._in_memory_users = {}  # Cache for read-only mode
+        self.cache_file = settings.READONLY_USER_CACHE_PATH or self.DEFAULT_CACHE_FILE
         self._connect()
         self._load_cache()  # Load persisted data on startup
     
@@ -123,8 +124,8 @@ class SheetsDatabase:
             return  # Don't use cache if we have write access
             
         try:
-            if os.path.exists(self.CACHE_FILE):
-                with open(self.CACHE_FILE, 'r') as f:
+            if os.path.exists(self.cache_file):
+                with open(self.cache_file, 'r') as f:
                     cache_data = json.load(f)
                     if not cache_data:
                         return
@@ -179,7 +180,7 @@ class SheetsDatabase:
                     logger.warning(f"Failed to serialize user {telegram_id}: {e}")
                     continue
             
-            with open(self.CACHE_FILE, 'w') as f:
+            with open(self.cache_file, 'w') as f:
                 json.dump(cache_data, f, indent=2)
             logger.debug(f"Saved {len(cache_data)} users to persistent cache")
         except Exception as e:
