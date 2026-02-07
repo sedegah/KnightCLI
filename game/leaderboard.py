@@ -3,6 +3,7 @@ from typing import List, Tuple
 import logging
 
 from config.constants import LEADERBOARD_DISPLAY_COUNT, WEEKLY_REWARDS, LEADERBOARD_TOP_COUNT
+from utils.helpers import escape_markdown
 from database.models import User, LeaderboardEntry
 from database.sheets_client import db
 
@@ -45,6 +46,7 @@ class LeaderboardManager:
             highlight = "👉 " if entry.telegram_id == highlight_user_id else ""
             
             username = entry.username if entry.username else "Anonymous"
+            username = escape_markdown(username)
             if len(username) > 15:
                 username = username[:12] + "..."
             
@@ -125,6 +127,7 @@ class LeaderboardManager:
         for entry in leaderboard[:10]:
             medal = medal_emojis.get(entry.rank, f"{entry.rank}.")
             username = entry.username if entry.username else "Anonymous"
+            username = escape_markdown(username)
             
             text += f"{medal} **{username}** - {entry.points:,} pts\n"
             
@@ -154,6 +157,7 @@ class LeaderboardManager:
         for entry in leaderboard:
             medal = medal_emojis.get(entry.rank, f"{entry.rank}.")
             username = entry.username if entry.username else "Anonymous"
+            username = escape_markdown(username)
             text += f"{medal} {username}: {entry.points:,} pts\n"
         
         return text.strip()

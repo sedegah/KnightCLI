@@ -29,6 +29,12 @@ class CallbackHandlers:
             if "message is not modified" in error_text:
                 await query.answer("Already up to date.")
                 return
+            if "can't parse entities" in error_text or "cannot parse entities" in error_text:
+                await query.edit_message_text(
+                    text,
+                    reply_markup=reply_markup
+                )
+                return
             if "message can't be edited" in error_text or "message to edit not found" in error_text:
                 if query.message:
                     await query.message.reply_text(

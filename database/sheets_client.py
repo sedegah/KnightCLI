@@ -396,24 +396,8 @@ class SheetsDatabase:
                             'username': user.username,
                             'weekly_points': user.weekly_points,
                         })
-                # If no in-memory users, try to get from sheet
                 else:
-                    try:
-                        records = self._get_worksheet_values(SHEET_NAMES["users"])
-                        for row in records[1:]:
-                            if row and len(row) >= 6:
-                                try:
-                                    users.append({
-                                        'telegram_id': int(row[0]),
-                                        'username': row[1],
-                                        'weekly_points': int(row[5]),
-                                    })
-                                except:
-                                    continue
-                    except Exception as e:
-                        logger.warning(f"Could not fetch users from sheet in read-only mode: {e}")
-                        # Return empty leaderboard rather than crashing
-                        return []
+                    return []
             else:
                 # In write mode, get from sheet
                 records = self._get_worksheet_values(SHEET_NAMES["users"])
