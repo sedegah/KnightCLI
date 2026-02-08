@@ -287,7 +287,8 @@ class SupabaseDatabase:
     def _get_answered_question_ids(self, telegram_id: int) -> set:
         try:
             response = self.client.table('attempts').select('question_id').eq('telegram_id', telegram_id).execute()
-            return {row.get('question_id') for row in (response.data or []) if row.get('question_id')}
+            # Convert all question_ids to strings for consistent comparison
+            return {str(row.get('question_id')) for row in (response.data or []) if row.get('question_id')}
         except Exception as e:
             logger.error(f"Error getting answered questions: {e}")
             return set()
@@ -497,7 +498,7 @@ class SupabaseDatabase:
             answered_ids = self._get_answered_question_ids(user_telegram_id) if exclude_answered else set()
             available: List[Question] = []
             for row in records:
-                question_id = row.get('question_id')
+                question_id = str(row.get('question_id'))  # Convert to string for comparison
                 if not question_id or question_id in answered_ids:
                     continue
                 if row.get('used', False):
@@ -587,9 +588,11 @@ class SupabaseDatabase:
             'option_c': question.option_c,
             'option_d': question.option_d,
             'correct_option': question.correct_option,
-            'explanation': question.explanation,
             'difficulty': question.difficulty,
-            'tags': question.tags
+            'time_limit_seconds': question.time_limit_seconds,
+            'scheduled_date': question.scheduled_date,
+            'used': question.used,
+            'sponsor_name': question.sponsor_name
         }
     
     def _dict_to_question(self, data: Dict[str, Any]) -> Question:
