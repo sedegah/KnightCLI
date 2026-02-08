@@ -36,7 +36,11 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
-    # PostgreSQL connection (when enabled)
+    # Supabase Configuration
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+    
+    # Legacy PostgreSQL connection (deprecated - use Supabase instead)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "5"))
     DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "10"))
@@ -64,6 +68,12 @@ class Settings:
         
         if not cls.SPREADSHEET_ID:
             errors.append("SPREADSHEET_ID is required")
+
+        if not cls.SUPABASE_URL:
+            errors.append("SUPABASE_URL is required")
+
+        if not cls.SUPABASE_KEY:
+            errors.append("SUPABASE_KEY is required")
         
         return errors
     

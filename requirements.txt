@@ -2,9 +2,9 @@
 python-telegram-bot==20.7
 python-dotenv==1.0.0
 
-# PostgreSQL Database
-psycopg2-binary==2.9.9
-SQLAlchemy==2.0.23
+# Supabase Database
+supabase==2.3.4
+postgrest-py==0.13.2
 
 # Encryption
 cryptography==41.0.7

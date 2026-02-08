@@ -79,9 +79,7 @@ class SheetsDatabase:
             # The important thing is that the spreadsheet ID is accessible
             logger.info("Public sheet access verified")
         except Exception as e:
-            # Only raise if it's a network issue, not a data issue
             logger.warning(f"Could not verify public sheet access: {e}")
-            # Don't fail on verification - the sheet might be empty or have different sheet names
     
     def _get_worksheet(self, sheet_name: str):
         if self.use_api_only:

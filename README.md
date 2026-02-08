@@ -57,22 +57,31 @@ A gamified quiz platform on Telegram with continuous play mechanics and schedule
 
 ### Current Stack (MVP)
 - **Bot Interface**: python-telegram-bot
-- **Database**: Google Sheets (MVP-friendly, quick setup)
+- **Database**: Supabase (PostgreSQL with built-in APIs, real-time, and dashboard)
 - **Scheduler**: APScheduler for prize rounds and reminders
 - **Integration**: Make.com automation ready
 - **Deployment**: Docker containerized, Render hosting
+
+### Database Architecture
+
+**Current: Supabase** ✅
+- PostgreSQL-based with automatic APIs
+- Real-time data subscriptions
+- Built-in authentication and storage
+- Web dashboard for data management
+- Automatic backups and scaling
 
 ### Migration Path (When Scaling)
 
 | Component | MVP (Now) | Scaled (Future) |
 |-----------|-----------|-----------------|
-| Database | Google Sheets | PostgreSQL |
-| Backend | Make.com | FastAPI/Node.js Backend API |
+| Database | Supabase | Supabase (scaled tier) |
+| Backend | Bot + Supabase | FastAPI/Node.js + Supabase |
 | Interface | Bot only | Bot + Mini-App |
 | Payments | Manual payouts | Automated payment system |
-| Logic | ✅ Ready | ✅ Already designed for migration |
+| Logic | ✅ Ready | ✅ Already designed for scale |
 
-**Key Insight:** Logic stays the same. Only the engine changes.
+**Key Insight:** Supabase scales with you - start free, upgrade as you grow.
 
 ### Why This Approach Works
 1. **Fast MVP Launch**: Get to market in 30 days
@@ -82,7 +91,7 @@ A gamified quiz platform on Telegram with continuous play mechanics and schedule
 
 ## Setup
 
-See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed installation instructions.
+See Quick Start below for installation instructions.
 
 ## Deployment
 
@@ -99,6 +108,7 @@ The bot is containerized and ready for deployment on:
 - [x] Anti-cheat system (MVP level)
 - [x] Manual reward approval
 - [x] Sponsored question support
+- [x] Supabase database integration
 - [ ] Launch to first 100 users
 
 ### Short-term (Month 2-3)
@@ -108,7 +118,7 @@ The bot is containerized and ready for deployment on:
 - [ ] First brand partnership
 
 ### Medium-term (Month 4-6)
-- [ ] Migration to PostgreSQL
+- [ ] Scale Supabase (upgrade tier if needed)
 - [ ] Backend API development
 - [ ] Mini-App interface
 - [ ] Automated payment processing
@@ -132,10 +142,6 @@ The bot is containerized and ready for deployment on:
 - **Referral System**: Built-in viral mechanics
 - **Brand Partnerships**: Sponsored content from day 1
 - **Community Building**: Engagement through daily prizes
-
-## Contributing
-
-See [SETUP_GUIDE.md](SETUP_GUIDE.md) for development setup.
 
 ## License
 
@@ -270,7 +276,7 @@ docker run -d --env-file .env telegram-quiz-bot
 
 | MVP Component | Scaled Version |
 |--------------|----------------|
-| Google Sheets | PostgreSQL |
+| Supabase | Supabase (scaled tier) |
 | APScheduler | Redis + Celery |
 | Bot Only | Bot + Mini-App |
 | Manual Payouts | Automated Payouts |
