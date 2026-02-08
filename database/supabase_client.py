@@ -243,83 +243,91 @@ class SupabaseDatabase:
             return []
     
     def get_question_attempts(self, question_id: str) -> List[Attempt]:
-            def get_user_attempts_count(self, telegram_id: int, question_id: str) -> int:
-                try:
-                    response = (
-                        self.client.table('attempts')
-                        .select('id', count='exact')
-                        .eq('telegram_id', telegram_id)
-                        .eq('question_id', question_id)
-                        .execute()
-                    )
-                    if getattr(response, "count", None) is not None:
-                        return int(response.count)
-                    return len(response.data or [])
-                except Exception as e:
-                    logger.error(f"Error getting attempt count: {e}")
-                    return 0
+        """Get all attempts for a specific question."""
+        try:
+            response = self.client.table('attempts').select('*').eq('question_id', question_id).execute()
+            return [self._dict_to_attempt(row) for row in response.data]
+        except Exception as e:
+            logger.error(f"Error getting attempts for question {question_id}: {e}")
+            return []
+    
+    def get_user_attempts_count(self, telegram_id: int, question_id: str) -> int:
+        try:
+            response = (
+                self.client.table('attempts')
+                .select('id', count='exact')
+                .eq('telegram_id', telegram_id)
+                .eq('question_id', question_id)
+                .execute()
+            )
+            if getattr(response, "count", None) is not None:
+                return int(response.count)
+            return len(response.data or [])
+        except Exception as e:
+            logger.error(f"Error getting attempt count: {e}")
+            return 0
 
-            def get_user_hourly_attempts(self, telegram_id: int) -> int:
-                try:
-                    one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
-                    response = (
-                        self.client.table('attempts')
-                        .select('id', count='exact')
-                        .eq('telegram_id', telegram_id)
-                        .gte('timestamp', one_hour_ago)
-                        .execute()
-                    )
-                    if getattr(response, "count", None) is not None:
-                        return int(response.count)
-                    return len(response.data or [])
-                except Exception as e:
-                    logger.error(f"Error getting hourly attempts: {e}")
-                    return 0
+    def get_user_hourly_attempts(self, telegram_id: int) -> int:
+        try:
+            one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+            response = (
+                self.client.table('attempts')
+                .select('id', count='exact')
+                .eq('telegram_id', telegram_id)
+                .gte('timestamp', one_hour_ago)
+                .execute()
+            )
+            if getattr(response, "count", None) is not None:
+                return int(response.count)
+            return len(response.data or [])
+        except Exception as e:
+            logger.error(f"Error getting hourly attempts: {e}")
+            return 0
 
-            def _get_answered_question_ids(self, telegram_id: int) -> set:
-                try:
-                    response = self.client.table('attempts').select('question_id').eq('telegram_id', telegram_id).execute()
-                    return {row.get('question_id') for row in (response.data or []) if row.get('question_id')}
-                except Exception as e:
-                    logger.error(f"Error getting answered questions: {e}")
-                    return set()
+    def _get_answered_question_ids(self, telegram_id: int) -> set:
+        try:
+            response = self.client.table('attempts').select('question_id').eq('telegram_id', telegram_id).execute()
+            return {row.get('question_id') for row in (response.data or []) if row.get('question_id')}
+        except Exception as e:
+            logger.error(f"Error getting answered questions: {e}")
+            return set()
 
-            def get_oldest_attempt_within_hour(self, telegram_id: int) -> Optional[datetime]:
-                try:
-                    one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
-                    response = (
-                        self.client.table('attempts')
-                        .select('timestamp')
-                        .eq('telegram_id', telegram_id)
-                        .gte('timestamp', one_hour_ago)
-                        .order('timestamp', desc=False)
-                        .limit(1)
-                        .execute()
-                    )
-                    if not response.data:
-                        return None
-                    ts = response.data[0].get('timestamp')
-                    if not ts:
-                        return None
-                    return datetime.fromisoformat(ts)
-                except Exception as e:
-                    logger.error(f"Error getting oldest attempt: {e}")
-                    return None
+    def get_oldest_attempt_within_hour(self, telegram_id: int) -> Optional[datetime]:
+        try:
+            one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+            response = (
+                self.client.table('attempts')
+                .select('timestamp')
+                .eq('telegram_id', telegram_id)
+                .gte('timestamp', one_hour_ago)
+                .order('timestamp', desc=False)
+                .limit(1)
+                .execute()
+            )
+            if not response.data:
+                return None
+            ts = response.data[0].get('timestamp')
+            if not ts:
+                return None
+            return datetime.fromisoformat(ts)
+        except Exception as e:
+            logger.error(f"Error getting oldest attempt: {e}")
+            return None
 
-            def get_recent_attempt_correctness(self, telegram_id: int, limit: int = 20) -> List[bool]:
-                try:
-                    response = (
-                        self.client.table('attempts')
-                        .select('is_correct')
-                        .eq('telegram_id', telegram_id)
-                        .order('timestamp', desc=True)
-                        .limit(limit)
-                        .execute()
-                    )
-                    return [bool(row.get('is_correct')) for row in (response.data or [])]
-                except Exception as e:
-                    logger.error(f"Error getting recent attempts: {e}")
-                    return []
+    def get_recent_attempt_correctness(self, telegram_id: int, limit: int = 20) -> List[bool]:
+        try:
+            response = (
+                self.client.table('attempts')
+                .select('is_correct')
+                .eq('telegram_id', telegram_id)
+                .order('timestamp', desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return [bool(row.get('is_correct')) for row in (response.data or [])]
+        except Exception as e:
+            logger.error(f"Error getting recent attempts: {e}")
+            return []
         """Get all attempts for a specific question."""
         try:
             response = self.client.table('attempts').select('*').eq('question_id', question_id).execute()
@@ -435,74 +443,82 @@ class SupabaseDatabase:
             return False
     
     def get_referrals_by_referrer(self, telegram_id: int) -> List[Referral]:
-            def get_referral_count(self, telegram_id: int) -> int:
-                try:
-                    response = (
-                        self.client.table('referrals')
-                        .select('id', count='exact')
-                        .eq('referrer_id', telegram_id)
-                        .eq('reward_claimed', True)
-                        .execute()
-                    )
-                    if getattr(response, "count", None) is not None:
-                        return int(response.count)
-                    return len(response.data or [])
-                except Exception as e:
-                    logger.error(f"Error getting referral count: {e}")
-                    return 0
+        """Get all referrals made by a user."""
+        try:
+            response = self.client.table('referrals').select('*').eq('referrer_id', telegram_id).execute()
+            return [self._dict_to_referral(row) for row in response.data]
+        except Exception as e:
+            logger.error(f"Error getting referrals for user {telegram_id}: {e}")
+            return []
+    
+    def get_referral_count(self, telegram_id: int) -> int:
+        try:
+            response = (
+                self.client.table('referrals')
+                .select('id', count='exact')
+                .eq('referrer_id', telegram_id)
+                .eq('reward_claimed', True)
+                .execute()
+            )
+            if getattr(response, "count", None) is not None:
+                return int(response.count)
+            return len(response.data or [])
+        except Exception as e:
+            logger.error(f"Error getting referral count: {e}")
+            return 0
 
-            def update_referral_qualification(self, referred_telegram_id: int) -> bool:
-                try:
-                    self.client.table('referrals').update({'reward_claimed': True}).eq('referred_id', referred_telegram_id).execute()
-                    return True
-                except Exception as e:
-                    logger.error(f"Error updating referral qualification: {e}")
-                    return False
+    def update_referral_qualification(self, telegram_id: int, qualified: bool) -> bool:
+        try:
+            self.client.table('referrals').update({'reward_claimed': qualified}).eq('referred_id', telegram_id).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Error updating referral qualification: {e}")
+            return False
 
-            def get_user_by_referral_code(self, code: str) -> Optional[User]:
-                try:
-                    response = self.client.table('users').select('*').eq('referral_code', code).execute()
-                    if not response.data:
-                        return None
-                    return self._dict_to_user(response.data[0])
-                except Exception as e:
-                    logger.error(f"Error getting user by referral code: {e}")
-                    return None
+    def get_user_by_referral_code(self, code: str) -> Optional[User]:
+        try:
+            response = self.client.table('users').select('*').eq('referral_code', code).execute()
+            if not response.data:
+                return None
+            return self._dict_to_user(response.data[0])
+        except Exception as e:
+            logger.error(f"Error getting user by referral code: {e}")
+            return None
 
-            def get_random_question(
-                self,
-                question_type: str,
-                user_telegram_id: int,
-                exclude_answered: bool = True,
-            ) -> Optional[Question]:
-                try:
-                    response = self.client.table('questions').select('*').execute()
-                    records = response.data or []
-                    answered_ids = self._get_answered_question_ids(user_telegram_id) if exclude_answered else set()
-                    available: List[Question] = []
-                    for row in records:
-                        question_id = row.get('question_id')
-                        if not question_id or question_id in answered_ids:
-                            continue
-                        if row.get('used', False):
-                            continue
-                        available.append(self._dict_to_question(row))
-                    if not available:
-                        return None
-                    return random.choice(available)
-                except Exception as e:
-                    logger.error(f"Error getting random question: {e}")
-                    return None
+    def get_random_question(
+        self,
+        question_type: str,
+        user_telegram_id: int,
+        exclude_answered: bool = True,
+    ) -> Optional[Question]:
+        try:
+            response = self.client.table('questions').select('*').execute()
+            records = response.data or []
+            answered_ids = self._get_answered_question_ids(user_telegram_id) if exclude_answered else set()
+            available: List[Question] = []
+            for row in records:
+                question_id = row.get('question_id')
+                if not question_id or question_id in answered_ids:
+                    continue
+                if row.get('used', False):
+                    continue
+                available.append(self._dict_to_question(row))
+            if not available:
+                return None
+            return random.choice(available)
+        except Exception as e:
+            logger.error(f"Error getting random question: {e}")
+            return None
 
-            def get_question(self, question_id: str) -> Optional[Question]:
-                return self.get_question_by_id(question_id)
+    def get_question(self, question_id: str) -> Optional[Question]:
+        return self.get_question_by_id(question_id)
 
-            def health_check(self) -> bool:
-                try:
-                    self.client.table('users').select('telegram_id').limit(1).execute()
-                    return True
-                except Exception:
-                    return False
+    def health_check(self) -> bool:
+        try:
+            self.client.table('users').select('telegram_id').limit(1).execute()
+            return True
+        except Exception:
+            return False
         """Get all referrals made by a user."""
         try:
             response = self.client.table('referrals').select('*').eq('referrer_id', telegram_id).execute()
