@@ -192,7 +192,7 @@ class PrizeRoundScheduler:
         Args:
             message: Message text to send
         """
-        from database.sheets_client import db
+        from database.supabase_client import db
 
         try:
             users = db.get_users_for_notifications()

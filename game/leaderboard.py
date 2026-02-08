@@ -5,7 +5,7 @@ import logging
 from config.constants import LEADERBOARD_DISPLAY_COUNT, WEEKLY_REWARDS, LEADERBOARD_TOP_COUNT
 from utils.helpers import escape_markdown
 from database.models import User, LeaderboardEntry
-from database.sheets_client import db
+from database.supabase_client import db
 
 logger = logging.getLogger(__name__)
 

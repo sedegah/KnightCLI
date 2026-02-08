@@ -4,7 +4,7 @@ import logging
 
 from config.constants import RATE_LIMITS, UserType, ANTI_CHEAT
 from database.models import User
-from database.sheets_client import db
+from database.supabase_client import db
 
 logger = logging.getLogger(__name__)
 
@@ -86,23 +86,7 @@ class EligibilityChecker:
     def _get_wait_time(hourly_attempts: int, telegram_id: int) -> int:
         """Calculate estimated wait time in minutes before user can play again."""
         try:
-            from database.sheets_client import db
-            worksheet = db._get_worksheet("attempts")
-            records = worksheet.get_all_values()
-            
-            one_hour_ago = datetime.utcnow() - timedelta(hours=1)
-            oldest_attempt = None
-            
-            for row in records[1:]:
-                if row and len(row) >= 11 and row[1] == str(telegram_id):
-                    try:
-                        timestamp = datetime.fromisoformat(row[10])
-                        if timestamp > one_hour_ago:
-                            if oldest_attempt is None or timestamp < oldest_attempt:
-                                oldest_attempt = timestamp
-                    except:
-                        continue
-            
+            oldest_attempt = db.get_oldest_attempt_within_hour(telegram_id)
             if oldest_attempt:
                 time_until_reset = oldest_attempt + timedelta(hours=1) - datetime.utcnow()
                 return max(1, int(time_until_reset.total_seconds() / 60))
@@ -134,16 +118,7 @@ class EligibilityChecker:
     def check_and_flag_suspicious_behavior(user: User) -> User:
         """Check for suspicious patterns and update flags if needed."""
         try:
-            from database.sheets_client import db
-            worksheet = db._get_worksheet("attempts")
-            records = worksheet.get_all_values()
-            
-            user_attempts = []
-            for row in reversed(records[1:]):
-                if row and len(row) >= 6 and row[1] == str(user.telegram_id):
-                    user_attempts.append(row[5].lower() == "true")
-                    if len(user_attempts) >= 20:
-                        break
+            user_attempts = db.get_recent_attempt_correctness(user.telegram_id, limit=20)
             
             if len(user_attempts) >= 20:
                 correct_count = sum(user_attempts[:20])

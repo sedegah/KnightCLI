@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 import logging
 
-from database.sheets_client import db
+from database.supabase_client import db
 from database.models import User
 from config.constants import MESSAGES, BUTTON_LABELS
 from config.settings import settings
@@ -52,20 +52,13 @@ class BotHandlers:
             if user is None:
                 await update.message.reply_text(
                     "⚠️ **Database Configuration Required**\n\n"
-                    "This bot requires Google Sheets credentials to save user data. "
-                    "Please provide service account credentials to enable full functionality.\n\n"
+                    "This bot requires Supabase credentials to save user data. "
+                    "Please provide valid SUPABASE_URL and SUPABASE_KEY values.\n\n"
                     "For now, you can still try some features, but your progress won't be saved.",
                     parse_mode=ParseMode.MARKDOWN,
                     reply_markup=Keyboards.main_menu()
                 )
-                logger.warning(f"User {telegram_id} created in memory only (no persistence)")
-                # Create a temporary user object for this session
-                user = db.create_user(
-                    telegram_id=telegram_id,
-                    username=username,
-                    full_name=full_name,
-                    referred_by=referred_by
-                )
+                logger.warning(f"User {telegram_id} could not be persisted to Supabase")
                 return
             
             if referred_by:

@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
 from config.settings import settings
-from database.sheets_client import db
+from database.supabase_client import db
 
 logger = logging.getLogger(__name__)
 

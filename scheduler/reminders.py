@@ -5,7 +5,7 @@ import logging
 
 from config.settings import settings
 from config.constants import MESSAGES
-from database.sheets_client import db
+from database.supabase_client import db
 
 logger = logging.getLogger(__name__)
 

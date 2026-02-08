@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 import logging
 
-from database.sheets_client import db
+from database.supabase_client import db
 from config.constants import UserType
 from bot.keyboards import Keyboards
 from game.questions import question_manager

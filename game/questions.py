@@ -5,7 +5,7 @@ import uuid
 
 from config.constants import QuestionType
 from database.models import Question, User, Attempt
-from database.sheets_client import db
+from database.supabase_client import db
 from game.scoring import scoring_engine
 from game.eligibility import eligibility_checker
 
@@ -42,14 +42,13 @@ class QuestionManager:
                 return None, (
                     "📚 **No questions available right now.**\n\n"
                     "It looks like the question bank is empty. "
-                    "Please add questions to your Google Sheet to start playing.\n\n"
-                    "Questions go in the 'Questions' sheet with these columns:\n"
+                    "Please add questions to your Supabase `questions` table to start playing.\n\n"
+                    "Required fields:\n"
                     "• question_id\n"
                     "• question_text\n"
                     "• option_a, option_b, option_c, option_d\n"
                     "• correct_option (A/B/C/D)\n"
-                    "• difficulty, category, points, explanation\n\n"
-                    "Or provide credentials to enable the admin panel!"
+                    "• difficulty, category\n"
                 )
         
         can_attempt, error, attempt_num = eligibility_checker.check_question_attempts(

@@ -18,7 +18,7 @@ from bot.callbacks import callback_handlers
 from bot.admin_commands import admin_commands
 from scheduler.prize_rounds import PrizeRoundScheduler
 from scheduler.reminders import ReminderScheduler
-from database.sheets_client import db
+from database.supabase_client import db
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -165,20 +165,10 @@ def main():
     
     logger.info("Checking database connection...")
     if not db.health_check():
-        logger.error("Failed to connect to Google Sheets database")
-        logger.error("Please run 'python scripts/setup_sheets.py' first")
+        logger.error("Failed to connect to Supabase database")
+        logger.error("Please verify SUPABASE_URL and SUPABASE_KEY are set")
         sys.exit(1)
     logger.info("✓ Database connection OK")
-    
-    if not db.has_write_access:
-        logger.warning("")
-        logger.warning("⚠️  READ-ONLY MODE ENABLED ⚠️")
-        logger.warning("Database is operating in read-only mode because no service account credentials were provided.")
-        logger.warning("User data will NOT be persisted. To enable full functionality:")
-        logger.warning("  1. Create a service account in Google Cloud Console")
-        logger.warning("  2. Share your Google Sheet with the service account email")
-        logger.warning("  3. Provide credentials via GOOGLE_CREDENTIALS_JSON environment variable")
-        logger.warning("")
     
     logger.info(f"Creating bot application...")
     application = (

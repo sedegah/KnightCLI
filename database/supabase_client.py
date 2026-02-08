@@ -1,5 +1,7 @@
 """Supabase database client for managing all data operations."""
 import logging
+import random
+import string
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from supabase import create_client, Client
@@ -16,6 +18,7 @@ class SupabaseDatabase:
     
     def __init__(self):
         self.client: Optional[Client] = None
+        self.has_write_access = True
         self._connect()
     
     def _connect(self):
@@ -45,22 +48,63 @@ class SupabaseDatabase:
             logger.error(f"Error getting user {telegram_id}: {e}")
             return None
     
-    def create_user(self, user: User) -> bool:
-        """Create a new user."""
+    def create_user(
+        self,
+        telegram_id: Optional[int] = None,
+        username: str = "",
+        full_name: str = "",
+        referred_by: str = "",
+        user: Optional[User] = None,
+    ) -> Optional[User]:
+        """Create a new user (supports legacy signature)."""
         try:
+            if isinstance(telegram_id, User):
+                user = telegram_id
+            elif user is None:
+                referral_code = self._generate_referral_code()
+                user = User(
+                    telegram_id=telegram_id or 0,
+                    username=username,
+                    full_name=full_name,
+                    referral_code=referral_code,
+                    referred_by=referred_by,
+                )
+
+            if user is None:
+                return None
+
             data = self._user_to_dict(user)
             self.client.table('users').insert(data).execute()
             logger.info(f"✓ Created user: {user.telegram_id}")
-            return True
+            return user
         except APIError as e:
             if 'duplicate key' in str(e).lower():
                 logger.warning(f"User {user.telegram_id} already exists")
-                return False
+                return None
             logger.error(f"Error creating user: {e}")
-            return False
+            return None
         except Exception as e:
             logger.error(f"Error creating user: {e}")
-            return False
+            return None
+
+    def get_users_for_notifications(self) -> List[Dict[str, Optional[str]]]:
+        """Return minimal user data for notifications."""
+        try:
+            response = self.client.table('users').select('telegram_id,username,streak,last_played_date').execute()
+            users: List[Dict[str, Optional[str]]] = []
+            for row in response.data:
+                users.append(
+                    {
+                        "telegram_id": row.get("telegram_id"),
+                        "username": row.get("username"),
+                        "streak": row.get("streak", 0),
+                        "last_played_date": row.get("last_played_date"),
+                    }
+                )
+            return users
+        except Exception as e:
+            logger.error(f"Error getting users for notifications: {e}")
+            return []
     
     def update_user(self, user: User) -> bool:
         """Update an existing user."""
@@ -160,17 +204,17 @@ class SupabaseDatabase:
     
     # ===== ATTEMPT OPERATIONS =====
     
-    def record_attempt(self, attempt: Attempt) -> bool:
-        """Record a quiz attempt."""
+    def create_attempt(self, attempt: Attempt) -> bool:
+        """Record a quiz attempt (legacy name)."""
         try:
             data = {
                 'telegram_id': attempt.telegram_id,
                 'question_id': attempt.question_id,
                 'selected_option': attempt.selected_option,
                 'is_correct': attempt.is_correct,
-                'time_taken': attempt.time_taken,
-                'points_earned': attempt.points_earned,
-                'timestamp': attempt.timestamp
+                'time_taken': attempt.response_time_seconds,
+                'points_earned': attempt.points_awarded,
+                'timestamp': attempt.timestamp,
             }
             self.client.table('attempts').insert(data).execute()
             logger.debug(f"Recorded attempt for user {attempt.telegram_id}")
@@ -178,6 +222,10 @@ class SupabaseDatabase:
         except Exception as e:
             logger.error(f"Error recording attempt: {e}")
             return False
+
+    def record_attempt(self, attempt: Attempt) -> bool:
+        """Backward-compatible alias for create_attempt."""
+        return self.create_attempt(attempt)
     
     def get_user_attempts(self, telegram_id: int, limit: int = 100) -> List[Attempt]:
         """Get recent attempts for a user."""
@@ -195,6 +243,83 @@ class SupabaseDatabase:
             return []
     
     def get_question_attempts(self, question_id: str) -> List[Attempt]:
+            def get_user_attempts_count(self, telegram_id: int, question_id: str) -> int:
+                try:
+                    response = (
+                        self.client.table('attempts')
+                        .select('id', count='exact')
+                        .eq('telegram_id', telegram_id)
+                        .eq('question_id', question_id)
+                        .execute()
+                    )
+                    if getattr(response, "count", None) is not None:
+                        return int(response.count)
+                    return len(response.data or [])
+                except Exception as e:
+                    logger.error(f"Error getting attempt count: {e}")
+                    return 0
+
+            def get_user_hourly_attempts(self, telegram_id: int) -> int:
+                try:
+                    one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+                    response = (
+                        self.client.table('attempts')
+                        .select('id', count='exact')
+                        .eq('telegram_id', telegram_id)
+                        .gte('timestamp', one_hour_ago)
+                        .execute()
+                    )
+                    if getattr(response, "count", None) is not None:
+                        return int(response.count)
+                    return len(response.data or [])
+                except Exception as e:
+                    logger.error(f"Error getting hourly attempts: {e}")
+                    return 0
+
+            def _get_answered_question_ids(self, telegram_id: int) -> set:
+                try:
+                    response = self.client.table('attempts').select('question_id').eq('telegram_id', telegram_id).execute()
+                    return {row.get('question_id') for row in (response.data or []) if row.get('question_id')}
+                except Exception as e:
+                    logger.error(f"Error getting answered questions: {e}")
+                    return set()
+
+            def get_oldest_attempt_within_hour(self, telegram_id: int) -> Optional[datetime]:
+                try:
+                    one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+                    response = (
+                        self.client.table('attempts')
+                        .select('timestamp')
+                        .eq('telegram_id', telegram_id)
+                        .gte('timestamp', one_hour_ago)
+                        .order('timestamp', desc=False)
+                        .limit(1)
+                        .execute()
+                    )
+                    if not response.data:
+                        return None
+                    ts = response.data[0].get('timestamp')
+                    if not ts:
+                        return None
+                    return datetime.fromisoformat(ts)
+                except Exception as e:
+                    logger.error(f"Error getting oldest attempt: {e}")
+                    return None
+
+            def get_recent_attempt_correctness(self, telegram_id: int, limit: int = 20) -> List[bool]:
+                try:
+                    response = (
+                        self.client.table('attempts')
+                        .select('is_correct')
+                        .eq('telegram_id', telegram_id)
+                        .order('timestamp', desc=True)
+                        .limit(limit)
+                        .execute()
+                    )
+                    return [bool(row.get('is_correct')) for row in (response.data or [])]
+                except Exception as e:
+                    logger.error(f"Error getting recent attempts: {e}")
+                    return []
         """Get all attempts for a specific question."""
         try:
             response = self.client.table('attempts').select('*').eq('question_id', question_id).execute()
@@ -236,19 +361,57 @@ class SupabaseDatabase:
     def reset_weekly_points(self) -> bool:
         """Reset weekly points for all users."""
         try:
-            # Supabase doesn't support update all directly, but we can use a stored procedure
-            # For now, we'll get all users and update them
-            response = self.client.table('users').select('telegram_id').execute()
-            user_ids = [row['telegram_id'] for row in response.data]
-            
-            for user_id in user_ids:
-                self.client.table('users').update({'weekly_points': 0}).eq('telegram_id', user_id).execute()
+            self.client.table('users').update({'weekly_points': 0}).gt('telegram_id', 0).execute()
             
             logger.info("✓ Reset weekly points for all users")
             return True
         except Exception as e:
             logger.error(f"Error resetting weekly points: {e}")
             return False
+
+    def get_weekly_leaderboard(self, limit: int = 50) -> List[LeaderboardEntry]:
+        try:
+            now = datetime.utcnow()
+            week_number = now.isocalendar()[1]
+            year = now.year
+            response = (
+                self.client.table('users')
+                .select('telegram_id,username,weekly_points')
+                .order('weekly_points', desc=True)
+                .limit(limit)
+                .execute()
+            )
+            leaderboard: List[LeaderboardEntry] = []
+            for rank, row in enumerate(response.data or [], start=1):
+                leaderboard.append(
+                    LeaderboardEntry(
+                        week_number=week_number,
+                        year=year,
+                        telegram_id=row.get('telegram_id'),
+                        username=row.get('username') or "",
+                        points=int(row.get('weekly_points') or 0),
+                        rank=rank,
+                    )
+                )
+            return leaderboard
+        except Exception as e:
+            logger.error(f"Error getting leaderboard: {e}")
+            return []
+
+    def get_user_rank(self, telegram_id: int) -> int:
+        try:
+            leaderboard = self.get_weekly_leaderboard(limit=1000)
+            for entry in leaderboard:
+                if entry.telegram_id == telegram_id:
+                    return entry.rank
+            return 0
+        except Exception as e:
+            logger.error(f"Error getting user rank: {e}")
+            return 0
+
+    def save_weekly_leaderboard(self, leaderboard: List[LeaderboardEntry]) -> bool:
+        logger.info("Skipping leaderboard persistence: not stored in Supabase")
+        return True
     
     # ===== REFERRAL OPERATIONS =====
     
@@ -256,20 +419,90 @@ class SupabaseDatabase:
         """Record a referral."""
         try:
             data = {
-                'referrer_id': referral.referrer_id,
-                'referred_id': referral.referred_id,
+                'referrer_id': referral.referrer_telegram_id,
+                'referred_id': referral.referred_telegram_id,
                 'referral_code': referral.referral_code,
-                'created_at': referral.created_at,
-                'reward_claimed': referral.reward_claimed
+                'created_at': referral.signup_date,
+                'reward_claimed': referral.qualified
             }
             self.client.table('referrals').insert(data).execute()
-            logger.info(f"✓ Created referral: {referral.referrer_id} -> {referral.referred_id}")
+            logger.info(
+                f"✓ Created referral: {referral.referrer_telegram_id} -> {referral.referred_telegram_id}"
+            )
             return True
         except Exception as e:
             logger.error(f"Error creating referral: {e}")
             return False
     
     def get_referrals_by_referrer(self, telegram_id: int) -> List[Referral]:
+            def get_referral_count(self, telegram_id: int) -> int:
+                try:
+                    response = (
+                        self.client.table('referrals')
+                        .select('id', count='exact')
+                        .eq('referrer_id', telegram_id)
+                        .eq('reward_claimed', True)
+                        .execute()
+                    )
+                    if getattr(response, "count", None) is not None:
+                        return int(response.count)
+                    return len(response.data or [])
+                except Exception as e:
+                    logger.error(f"Error getting referral count: {e}")
+                    return 0
+
+            def update_referral_qualification(self, referred_telegram_id: int) -> bool:
+                try:
+                    self.client.table('referrals').update({'reward_claimed': True}).eq('referred_id', referred_telegram_id).execute()
+                    return True
+                except Exception as e:
+                    logger.error(f"Error updating referral qualification: {e}")
+                    return False
+
+            def get_user_by_referral_code(self, code: str) -> Optional[User]:
+                try:
+                    response = self.client.table('users').select('*').eq('referral_code', code).execute()
+                    if not response.data:
+                        return None
+                    return self._dict_to_user(response.data[0])
+                except Exception as e:
+                    logger.error(f"Error getting user by referral code: {e}")
+                    return None
+
+            def get_random_question(
+                self,
+                question_type: str,
+                user_telegram_id: int,
+                exclude_answered: bool = True,
+            ) -> Optional[Question]:
+                try:
+                    response = self.client.table('questions').select('*').execute()
+                    records = response.data or []
+                    answered_ids = self._get_answered_question_ids(user_telegram_id) if exclude_answered else set()
+                    available: List[Question] = []
+                    for row in records:
+                        question_id = row.get('question_id')
+                        if not question_id or question_id in answered_ids:
+                            continue
+                        if row.get('used', False):
+                            continue
+                        available.append(self._dict_to_question(row))
+                    if not available:
+                        return None
+                    return random.choice(available)
+                except Exception as e:
+                    logger.error(f"Error getting random question: {e}")
+                    return None
+
+            def get_question(self, question_id: str) -> Optional[Question]:
+                return self.get_question_by_id(question_id)
+
+            def health_check(self) -> bool:
+                try:
+                    self.client.table('users').select('telegram_id').limit(1).execute()
+                    return True
+                except Exception:
+                    return False
         """Get all referrals made by a user."""
         try:
             response = self.client.table('referrals').select('*').eq('referrer_id', telegram_id).execute()
@@ -346,41 +579,50 @@ class SupabaseDatabase:
     def _dict_to_question(self, data: Dict[str, Any]) -> Question:
         """Convert Supabase dictionary to Question object."""
         return Question(
-            question_id=data['question_id'],
+            question_id=str(data['question_id']),
             category=data['category'],
             question_text=data['question_text'],
-            image_url=data.get('image_url'),
+            image_url=data.get('image_url') or None,
             option_a=data['option_a'],
             option_b=data['option_b'],
             option_c=data['option_c'],
             option_d=data['option_d'],
             correct_option=data['correct_option'],
-            explanation=data.get('explanation', ''),
-            difficulty=data.get('difficulty', 'medium'),
-            tags=data.get('tags', '')
+            difficulty=data.get('difficulty', 'Easy'),
+            time_limit_seconds=int(data.get('time_limit_seconds') or 20),
+            scheduled_date=data.get('scheduled_date'),
+            used=bool(data.get('used', False)),
+            sponsor_name=data.get('sponsor_name')
         )
     
     def _dict_to_attempt(self, data: Dict[str, Any]) -> Attempt:
         """Convert Supabase dictionary to Attempt object."""
         return Attempt(
-            telegram_id=data['telegram_id'],
+            attempt_id=str(data.get('attempt_id') or data.get('id') or ''),
+            telegram_id=int(data['telegram_id']),
             question_id=data['question_id'],
             selected_option=data['selected_option'],
-            is_correct=data['is_correct'],
-            time_taken=data.get('time_taken', 0),
-            points_earned=data.get('points_earned', 0),
+            is_correct=bool(data.get('is_correct')),
+            response_time_seconds=float(data.get('time_taken', 0) or 0),
+            points_awarded=int(data.get('points_earned', 0) or 0),
+            point_type=str(data.get('point_type') or ''),
+            attempt_number=int(data.get('attempt_number') or 1),
             timestamp=data.get('timestamp', datetime.utcnow().isoformat())
         )
     
     def _dict_to_referral(self, data: Dict[str, Any]) -> Referral:
         """Convert Supabase dictionary to Referral object."""
         return Referral(
-            referrer_id=data['referrer_id'],
-            referred_id=data['referred_id'],
+            referrer_telegram_id=int(data['referrer_id']),
+            referred_telegram_id=int(data['referred_id']),
             referral_code=data['referral_code'],
-            created_at=data.get('created_at', datetime.utcnow().isoformat()),
-            reward_claimed=data.get('reward_claimed', False)
+            signup_date=data.get('created_at', datetime.utcnow().isoformat()),
+            qualified=bool(data.get('reward_claimed', False)),
+            bonus_awarded=bool(data.get('bonus_awarded', False))
         )
+
+    def _generate_referral_code(self) -> str:
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
 
 # Global database instance
