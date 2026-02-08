@@ -176,7 +176,7 @@ class CallbackHandlers:
             )
             return
         
-        question_text = question_manager.format_question_text(question)
+        question_text = question_manager.format_question_text(question, user.total_questions + 1)
         await CallbackHandlers._safe_edit_message(
             query,
             question_text,

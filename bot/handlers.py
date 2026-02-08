@@ -102,7 +102,7 @@ class BotHandlers:
             )
             return
         
-        question_text = question_manager.format_question_text(question)
+        question_text = question_manager.format_question_text(question, user.total_questions + 1)
         await update.message.reply_text(
             question_text,
             reply_markup=Keyboards.question_options(question),
