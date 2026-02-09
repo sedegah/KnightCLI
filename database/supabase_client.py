@@ -384,7 +384,7 @@ class SupabaseDatabase:
             week_number = now.isocalendar()[1]
             year = now.year
             response = (
-                self.client.table('users')
+                self.client.table('leaderboard_cache')
                 .select('telegram_id,username,weekly_points')
                 .order('weekly_points', desc=True)
                 .limit(limit)

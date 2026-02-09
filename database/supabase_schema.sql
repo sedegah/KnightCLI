@@ -119,6 +119,7 @@ ORDER BY ap DESC;
 -- Create index on the materialized view
 CREATE INDEX IF NOT EXISTS idx_leaderboard_cache_ap ON leaderboard_cache(ap DESC);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_cache_weekly ON leaderboard_cache(weekly_points DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leaderboard_cache_telegram_id ON leaderboard_cache(telegram_id);
 
 -- ===== FUNCTIONS =====
 
@@ -171,17 +172,27 @@ ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
 -- Create policies for service role (your bot)
 -- These policies allow full access when using the service role key
 
-CREATE POLICY "Enable all access for service role" ON users
-    FOR ALL USING (true);
+/*
+DROP POLICY IF EXISTS "Enable all access for service role" ON users;
+DROP POLICY IF EXISTS "Enable all access for service role" ON questions;
+DROP POLICY IF EXISTS "Enable all access for service role" ON attempts;
+DROP POLICY IF EXISTS "Enable all access for service role" ON referrals;
 
-CREATE POLICY "Enable all access for service role" ON questions
-    FOR ALL USING (true);
+CREATE POLICY "Service role full access" ON users
+    FOR ALL USING (auth.role() = 'service_role');
 
-CREATE POLICY "Enable all access for service role" ON attempts
-    FOR ALL USING (true);
+CREATE POLICY "Service role full access" ON questions
+    FOR ALL USING (auth.role() = 'service_role');
 
-CREATE POLICY "Enable all access for service role" ON referrals
-    FOR ALL USING (true);
+CREATE POLICY "Service role full access" ON attempts
+    FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role full access" ON referrals
+    FOR ALL USING (auth.role() = 'service_role');
+
+REVOKE ALL ON TABLE leaderboard_cache FROM anon, authenticated;
+GRANT SELECT ON TABLE leaderboard_cache TO service_role;
+*/
 
 -- ===== SAMPLE DATA (Optional) =====
 -- Uncomment to insert sample admin user
