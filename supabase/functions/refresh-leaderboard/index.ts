@@ -1,7 +1,3 @@
-// Supabase Edge Function: Refresh Leaderboard Cache
-// Deploy with: supabase functions deploy refresh-leaderboard
-// Schedule with: supabase functions schedule refresh-leaderboard --cron "*/5 * * * *"
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
@@ -36,9 +32,10 @@ serve(async (req: Request): Promise<Response> => {
       }
     );
   } catch (error) {
-    console.error("Error refreshing leaderboard:", error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error("Error refreshing leaderboard:", err);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: err.message }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
