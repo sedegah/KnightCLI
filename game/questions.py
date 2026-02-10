@@ -25,6 +25,11 @@ class QuestionManager:
         is_eligible, error = eligibility_checker.check_play_eligibility(user)
         if not is_eligible:
             return None, error
+
+        if is_prize_round:
+            can_join_prize, prize_error = eligibility_checker.check_prize_round_eligibility(user)
+            if not can_join_prize:
+                return None, prize_error
         
         question = db.get_random_question(
             question_type="",
@@ -51,8 +56,9 @@ class QuestionManager:
                     "• difficulty, category\n"
                 )
         
+        mode = "prize_round" if is_prize_round else "continuous"
         can_attempt, error, attempt_num = eligibility_checker.check_question_attempts(
-            user, question.question_id
+            user, question.question_id, question_type=mode
         )
         
         if not can_attempt:
@@ -63,6 +69,7 @@ class QuestionManager:
             "question": question,
             "start_time": datetime.utcnow(),
             "attempt_number": attempt_num,
+            "is_prize_round": is_prize_round,
         }
         
         logger.info(f"Delivered question {question.question_id} to user {user.telegram_id}")
@@ -99,7 +106,8 @@ class QuestionManager:
             return False, {"error": warning}
         
         is_correct = selected_option.upper() == question.correct_option.upper()
-        
+        is_prize_round = bool(active_data.get("is_prize_round", is_prize_round))
+
         points, breakdown = scoring_engine.calculate_points(
             user=user,
             question=question,
@@ -156,6 +164,7 @@ class QuestionManager:
             "attempt_number": attempt_number,
             "user_rank": user_rank,
             "question": question,
+            "is_prize_round": is_prize_round,
         }
         
         logger.info(f"Processed answer for user {user.telegram_id}: correct={is_correct}, points={points}")

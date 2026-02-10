@@ -4,7 +4,7 @@ from apscheduler.triggers.cron import CronTrigger
 import logging
 
 from config.settings import settings
-from config.constants import MESSAGES
+from config.constants import MESSAGES, PRIZE_ROUND_DURATION_MINUTES
 from game.leaderboard import leaderboard_manager
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ class PrizeRoundScheduler:
         self.scheduler = AsyncIOScheduler(timezone=settings.TIMEZONE)
         self.is_prize_round_active = False
         self.current_round_type = None
+        self.prize_round_start_pp = {}
     
     def start(self):
         self.scheduler.add_job(
@@ -47,8 +48,8 @@ class PrizeRoundScheduler:
             self._weekly_reset,
             CronTrigger(
                 day_of_week="sun",
-                hour=0,
-                minute=0,
+                hour=23,
+                minute=59,
                 timezone=settings.TIMEZONE
             ),
             id="weekly_reset"
@@ -106,13 +107,18 @@ class PrizeRoundScheduler:
         self.current_round_type = round_type
         
         logger.info(f"Starting {round_type} prize round")
+
+        # Snapshot PP at start so winners are decided by round performance.
+        self.prize_round_start_pp = {}
+        for user in db.get_all_users():
+            self.prize_round_start_pp[user.telegram_id] = int(user.pp or 0)
         
         leaderboard_preview = leaderboard_manager.get_leaderboard_preview_for_prize_round()
         
         message = (
             f"🏆 **{round_type.upper()} PRIZE ROUND STARTED!**\n\n"
             f"Compete for the top spots and win rewards!\n\n"
-            f"**Duration:** 30 minutes\n"
+            f"**Duration:** {PRIZE_ROUND_DURATION_MINUTES} minutes\n"
             f"**Questions:** 10 special questions\n"
             f"**Higher Points:** PP (Prize Points)\n\n"
             f"**Current Leaders:**\n{leaderboard_preview}\n\n"
@@ -124,7 +130,7 @@ class PrizeRoundScheduler:
         self.scheduler.add_job(
             self._end_prize_round,
             "date",
-            run_date=datetime.now(settings.TIMEZONE) + timedelta(minutes=30),
+            run_date=datetime.now(settings.TIMEZONE) + timedelta(minutes=PRIZE_ROUND_DURATION_MINUTES),
             kwargs={"round_type": round_type},
             id=f"end_{round_type}_round"
         )
@@ -132,26 +138,59 @@ class PrizeRoundScheduler:
     async def _end_prize_round(self, round_type: str):
         self.is_prize_round_active = False
         self.current_round_type = None
-        
+
         logger.info(f"Ending {round_type} prize round")
-        
-        leaderboard = leaderboard_manager.get_current_leaderboard(limit=10)
-        leaderboard_text = leaderboard_manager.format_leaderboard_text(leaderboard)
-        
+
+        rankings = db.get_prize_round_rankings(
+            limit=200,
+            min_ap=settings.PRIZE_ROUND_MIN_AP,
+            min_questions=settings.PRIZE_ROUND_MIN_QUESTIONS,
+        )
+
+        scored = []
+        for user in rankings:
+            start_pp = int(self.prize_round_start_pp.get(user.telegram_id, 0))
+            gained_pp = int(user.pp or 0) - start_pp
+            if gained_pp <= 0:
+                continue
+            scored.append((gained_pp, int(user.ap or 0), user))
+
+        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        top = scored[:10]
+
+        if not top:
+            leaderboard_text = "No prize winners this round. Be ready for the next one!"
+        else:
+            lines = ["🏆 **Prize Round Results (PP only)**", ""]
+            for idx, (pp_gained, ap_points, user) in enumerate(top, start=1):
+                medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f"{idx}.")
+                username = user.username or user.full_name or "Anonymous"
+                if idx == 1:
+                    reward = "Cash / Airtime"
+                elif 2 <= idx <= 5:
+                    reward = "Airtime / Voucher"
+                else:
+                    reward = "Bonus AP"
+
+                lines.append(f"{medal} **{username}** — +{pp_gained} PP _(AP tiebreak: {ap_points})_")
+                lines.append(f"   🎁 {reward}")
+            leaderboard_text = "\n".join(lines)
+
         if round_type == "morning":
             next_round = "Evening (9:00 PM UTC)"
         else:
             next_round = "Tomorrow Morning (9:00 AM UTC)"
-        
+
         message = (
             f"🏁 **{round_type.upper()} PRIZE ROUND ENDED!**\n\n"
             f"{leaderboard_text}\n\n"
-            f"Great work everyone! Keep playing to maintain your rank.\n\n"
+            f"Winners are ranked by PP from this round only. AP is used only as seeding/tiebreak.\n\n"
             f"**Next Prize Round:** {next_round}"
         )
-        
+
+        self.prize_round_start_pp = {}
         await self._broadcast_to_all_users(message)
-    
+
     async def _send_prize_round_warning(self, round_type: str):
         logger.info(f"Sending {round_type} prize round warning")
         
@@ -192,8 +231,6 @@ class PrizeRoundScheduler:
         Args:
             message: Message text to send
         """
-        from database.supabase_client import db
-
         try:
             users = db.get_users_for_notifications()
 
