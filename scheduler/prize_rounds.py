@@ -47,8 +47,8 @@ class PrizeRoundScheduler:
             self._weekly_reset,
             CronTrigger(
                 day_of_week="sun",
-                hour=0,
-                minute=0,
+                hour=23,
+                minute=59,
                 timezone=settings.TIMEZONE
             ),
             id="weekly_reset"

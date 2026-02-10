@@ -2,7 +2,7 @@
 import logging
 import random
 import string
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from postgrest.exceptions import APIError
@@ -378,6 +378,36 @@ class SupabaseDatabase:
             logger.error(f"Error resetting weekly points: {e}")
             return False
 
+
+    def rollover_weekly_ap(self) -> Tuple[bool, str]:
+        """Archive current AP into total_ap and reset weekly counters for new week."""
+        try:
+            self.client.rpc('rollover_weekly_ap').execute()
+            logger.info("✓ Rolled over AP and reset weekly counters")
+            return True, "AP rolled into total_ap; AP and weekly_points reset"
+        except Exception as e:
+            logger.warning(f"RPC rollover_weekly_ap unavailable, using fallback updates: {e}")
+
+        try:
+            users_response = self.client.table('users').select('telegram_id,ap,total_ap').gt('telegram_id', 0).execute()
+            updated_count = 0
+            for row in users_response.data or []:
+                telegram_id = row.get('telegram_id')
+                ap = int(row.get('ap') or 0)
+                total_ap = int(row.get('total_ap') or 0)
+                payload = {'ap': 0, 'weekly_points': 0, 'total_ap': total_ap + ap}
+                self.client.table('users').update(payload).eq('telegram_id', telegram_id).execute()
+                updated_count += 1
+
+            if updated_count == 0:
+                self.client.table('users').update({'ap': 0, 'weekly_points': 0}).gt('telegram_id', 0).execute()
+
+            logger.info(f"✓ Fallback rollover complete for {updated_count} users")
+            return True, f"Rollover complete for {updated_count} users"
+        except Exception as fallback_error:
+            logger.error(f"Error during fallback AP rollover: {fallback_error}")
+            return False, str(fallback_error)
+
     def get_weekly_leaderboard(self, limit: int = 50) -> List[LeaderboardEntry]:
         now = datetime.utcnow()
         week_number = now.isocalendar()[1]
@@ -558,6 +588,7 @@ class SupabaseDatabase:
             'username': user.username,
             'full_name': user.full_name,
             'ap': user.ap,
+            'total_ap': user.total_ap,
             'pp': user.pp,
             'weekly_points': user.weekly_points,
             'streak': user.streak,
@@ -581,6 +612,7 @@ class SupabaseDatabase:
             username=data.get('username', ''),
             full_name=data.get('full_name', ''),
             ap=data.get('ap', 0),
+            total_ap=data.get('total_ap', 0),
             pp=data.get('pp', 0),
             weekly_points=data.get('weekly_points', 0),
             streak=data.get('streak', 0),

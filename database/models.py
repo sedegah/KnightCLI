@@ -10,6 +10,7 @@ class User:
     username: str
     full_name: str
     ap: int = 0
+    total_ap: int = 0
     pp: int = 0
     weekly_points: int = 0
     streak: int = 0
@@ -53,6 +54,7 @@ class User:
             self.username,
             self.full_name,
             str(self.ap),
+            str(self.total_ap),
             str(self.pp),
             str(self.weekly_points),
             str(self.streak),
@@ -70,24 +72,41 @@ class User:
     
     @classmethod
     def from_row(cls, row: List) -> "User":
+        # Backward-compatible parsing for legacy row formats.
+        has_total_ap = len(row) > 17
+        pp_index = 5 if has_total_ap else 4
+        weekly_points_index = 6 if has_total_ap else 5
+        streak_index = 7 if has_total_ap else 6
+        last_played_index = 8 if has_total_ap else 7
+        sub_status_index = 9 if has_total_ap else 8
+        sub_expires_index = 10 if has_total_ap else 9
+        total_questions_index = 11 if has_total_ap else 10
+        correct_answers_index = 12 if has_total_ap else 11
+        created_at_index = 13 if has_total_ap else 12
+        referral_code_index = 14 if has_total_ap else 13
+        referred_by_index = 15 if has_total_ap else 14
+        is_banned_index = 16 if has_total_ap else 15
+        suspicious_flags_index = 17 if has_total_ap else 16
+
         return cls(
             telegram_id=int(row[0]),
             username=row[1],
             full_name=row[2],
             ap=int(row[3]) if row[3] else 0,
-            pp=int(row[4]) if row[4] else 0,
-            weekly_points=int(row[5]) if row[5] else 0,
-            streak=int(row[6]) if row[6] else 0,
-            last_played_date=row[7] if row[7] else None,
-            subscription_status=row[8] if row[8] else UserType.FREE.value,
-            subscription_expires=row[9] if row[9] else None,
-            total_questions=int(row[10]) if row[10] else 0,
-            correct_answers=int(row[11]) if row[11] else 0,
-            created_at=row[12],
-            referral_code=row[13] if row[13] else "",
-            referred_by=row[14] if row[14] else "",
-            is_banned=row[15].lower() == "true" if len(row) > 15 and row[15] else False,
-            suspicious_flags=int(row[16]) if len(row) > 16 and row[16] else 0,
+            total_ap=int(row[4]) if has_total_ap and row[4] else 0,
+            pp=int(row[pp_index]) if row[pp_index] else 0,
+            weekly_points=int(row[weekly_points_index]) if row[weekly_points_index] else 0,
+            streak=int(row[streak_index]) if row[streak_index] else 0,
+            last_played_date=row[last_played_index] if row[last_played_index] else None,
+            subscription_status=row[sub_status_index] if row[sub_status_index] else UserType.FREE.value,
+            subscription_expires=row[sub_expires_index] if row[sub_expires_index] else None,
+            total_questions=int(row[total_questions_index]) if row[total_questions_index] else 0,
+            correct_answers=int(row[correct_answers_index]) if row[correct_answers_index] else 0,
+            created_at=row[created_at_index],
+            referral_code=row[referral_code_index] if row[referral_code_index] else "",
+            referred_by=row[referred_by_index] if row[referred_by_index] else "",
+            is_banned=row[is_banned_index].lower() == "true" if len(row) > is_banned_index and row[is_banned_index] else False,
+            suspicious_flags=int(row[suspicious_flags_index]) if len(row) > suspicious_flags_index and row[suspicious_flags_index] else 0,
         )
 
 

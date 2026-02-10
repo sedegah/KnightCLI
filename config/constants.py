@@ -137,7 +137,8 @@ Ready to upgrade? Contact @admin to subscribe!""",
     "stats_template": """📊 **Your Statistics**
 
 **Points:**
-• Accumulated Points (AP): {ap}
+• Current Week AP: {ap}
+• Lifetime AP: {total_ap}
 • Prize Points (PP): {pp}
 • Weekly Points: {weekly_points}
 
