@@ -218,18 +218,19 @@ telegram-quiz-bot/
 
 ### Scoring System
 
-#### Continuous Play (All Day)
-- **Free Users**: +5 AP per correct answer, 20 questions/hour
-- **Subscribers**: +8 AP per correct answer, 40 questions/hour
+#### Fair & Transparent Scoring (All Modes)
+- Correct answer: **+10**
+- Wrong answer: **0**
 
-#### Prize Rounds (2x Daily)
-- **Free Users**: +10 PP per correct answer, +0-5 speed bonus
-- **Subscribers**: +15 PP per correct answer, +0-7 speed bonus, 2 attempts per question
+#### Speed Bonus
+- Answered in **<30%** of question time: **+5**
+- Answered in **<50%** of question time: **+3**
+- Otherwise: **+0**
 
 ### Streak Bonuses
-- 3-day streak: +5 points
-- 7-day streak: +15 points
-- 30-day streak: +50 points
+- 3-day streak: +5
+- 7-day streak: +15
+- 30-day streak: +50
 
 ### Prize Round Schedule
 - Morning Round: 9:00 AM UTC
