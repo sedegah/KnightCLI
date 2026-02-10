@@ -474,20 +474,27 @@ class SupabaseDatabase:
                 )
             return leaderboard
 
-        try:
-            response = (
-                self.client.table('leaderboard_cache')
-                .select('telegram_id,username,weekly_points')
-                .order('weekly_points', desc=True)
-                .gt('weekly_points', 0)
-                .limit(limit)
-                .execute()
-            )
-            leaderboard = _build_leaderboard(response.data or [])
-            if leaderboard:
-                return leaderboard
-        except Exception as e:
-            logger.warning(f"Error getting leaderboard from cache, falling back to users table: {e}")
+        response = None
+        refreshed = self._try_refresh_leaderboard_cache()
+        if refreshed:
+            try:
+                response = (
+                    self.client.table('leaderboard_cache')
+                    .select('telegram_id,username,weekly_points')
+                    .order('weekly_points', desc=True)
+                    .gt('weekly_points', 0)
+                    .limit(limit)
+                    .execute()
+                )
+                leaderboard = _build_leaderboard(response.data or [])
+                if leaderboard:
+                    return leaderboard
+            except APIError as e:
+                logger.warning(f"Leaderboard cache unavailable, falling back to users: {e}")
+            except Exception as e:
+                logger.warning(f"Leaderboard cache query failed, falling back to users: {e}")
+        else:
+            logger.warning("Leaderboard cache refresh failed, using users table for weekly leaderboard")
 
         try:
             response = (
@@ -502,6 +509,14 @@ class SupabaseDatabase:
         except Exception as e:
             logger.error(f"Error getting leaderboard from users table: {e}")
             return []
+
+    def _try_refresh_leaderboard_cache(self) -> bool:
+        try:
+            self.client.rpc('refresh_leaderboard_cache').execute()
+            return True
+        except Exception as e:
+            logger.warning(f"Could not refresh leaderboard cache: {e}")
+            return False
 
     def get_user_rank(self, telegram_id: int) -> int:
         try:
