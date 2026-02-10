@@ -264,24 +264,8 @@ Missing a prize round means no penalty, but no reward chance for that event.
 
 ### 0.4 Reward Logic (Event-based & Sustainable)
 1. Players accumulate AP all day.
-2. At prize time, only eligible players compete:
-   - Minimum AP threshold (configurable)
-   - Minimum activity count (configurable)
-3. Winners are determined by PP only; AP is used for seeding/tiebreakers.
-
-**Reward Distribution (Example)**
-
-| Rank (Prize Round) | Reward |
-|---|---|
-| 1st | Cash / Airtime |
-| 2–5 | Airtime / Voucher |
-| Others | Bonus AP |
-
-**Why This Works**
-- Prevents all-day grinders from auto-winning
-- Keeps prize rounds exciting and skill-focused
-- Keeps reward costs predictable
-- Encourages subscription without making wins automatic
+2. At prize time, only eligible players compete.
+3. Winners are determined by PP; AP can be used for seeding/tiebreakers.
 
 ### 0.5 Subscription (Power, not pay-to-win)
 **Subscriber Benefits**

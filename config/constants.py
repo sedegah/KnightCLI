@@ -104,12 +104,12 @@ Play quizzes, earn points, and win prizes!
 • Top players win!
 
 **Your Status:** Free User
-• +5 AP per correct answer
+• +10 points per correct answer
 • 20 questions per hour
 
 💎 **Upgrade to Premium** for:
-• +8 AP per correct answer
-• +15 PP in prize rounds
+• +10 points per correct answer
+• Speed bonus: +5 (<30% time) / +3 (<50% time)
 • 40 questions per hour
 • 2 attempts per prize question
 • Higher speed bonuses (+0 to +7 in prize rounds)
@@ -119,16 +119,16 @@ Tap /play to start!""",
     "subscribe_info": """💎 **Premium Subscription Benefits**
 
 **Higher Points:**
-• +8 AP per correct answer (vs 5 free)
-• +15 PP in prize rounds (vs 10 free)
+• +10 base points for each correct answer
+• Speed bonus: +5 (<30% time), +3 (<50% time)
 
 **More Attempts:**
-• 2 attempts per prize question
+• Keep your streak for bonus points (3/7/30 days)
 • 40 questions per hour (vs 20 free)
 
 **Better Bonuses:**
-• Up to +7 speed bonus (vs +5 free)
-• 80% points on 2nd attempt
+• Streak bonus: +5 (3d), +15 (7d), +50 (30d)
+• Scoring is fair and transparent for all players
 
 **Price:** $4.99/month
 

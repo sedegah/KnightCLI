@@ -116,7 +116,9 @@ class ScoringEngine:
 
     @staticmethod
     def get_point_type(is_prize_round: bool) -> str:
-        return PointType.PP.value if is_prize_round else PointType.AP.value
+        if is_prize_round:
+            return PointType.PP.value
+        return PointType.AP.value
 
     @staticmethod
     def apply_points_to_user(user: User, points: int, point_type: str) -> User:
@@ -126,18 +128,24 @@ class ScoringEngine:
         else:
             user.ap += points
             user.weekly_points += points
+
         return user
 
     @staticmethod
     def format_points_breakdown(breakdown: dict, point_type: str) -> str:
         lines = []
+
         if breakdown["base"] > 0:
             lines.append(f"Base: +{breakdown['base']} {point_type}")
+
         if breakdown["speed_bonus"] > 0:
             lines.append(f"⚡ Speed Bonus: +{breakdown['speed_bonus']}")
+
         if breakdown["streak_bonus"] > 0:
             lines.append(f"🔥 Streak Bonus: +{breakdown['streak_bonus']}")
+
         lines.append(f"\n**Total: +{breakdown['total']} {point_type}**")
+
         return "\n".join(lines)
 
 
