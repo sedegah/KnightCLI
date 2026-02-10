@@ -3,6 +3,7 @@ from typing import Tuple, Optional
 import logging
 
 from config.constants import RATE_LIMITS, UserType, ANTI_CHEAT
+from config.settings import settings
 from database.models import User
 from database.supabase_client import db
 
@@ -51,36 +52,63 @@ class EligibilityChecker:
     
     @staticmethod
     def check_prize_round_eligibility(user: User) -> Tuple[bool, Optional[str]]:
-        """Check if user is eligible for prize rounds.
-        Currently, all non-banned users are eligible.
-        """
+        """Check if user is eligible for prize rounds."""
         if user.is_banned:
             return False, "⛔ Your account has been banned."
-        
+
         if user.suspicious_flags >= 3:
             return False, "⚠️ Your account is under review."
-        
-        
+
+        if user.ap < settings.PRIZE_ROUND_MIN_AP:
+            return False, (
+                "⚠️ You are not eligible for this prize round yet.\n"
+                f"Minimum AP required: {settings.PRIZE_ROUND_MIN_AP}."
+            )
+
+        if user.total_questions < settings.PRIZE_ROUND_MIN_QUESTIONS:
+            return False, (
+                "⚠️ You are not eligible for this prize round yet.\n"
+                f"Minimum answered questions required: {settings.PRIZE_ROUND_MIN_QUESTIONS}."
+            )
+
         return True, None
-    
+
     @staticmethod
-    def check_question_attempts(user: User, question_id: str, question_type: str = "single") -> Tuple[bool, Optional[str], int]:
+    def check_question_attempts(user: User, question_id: str, question_type: str = "continuous") -> Tuple[bool, Optional[str], int]:
         """Check if user can attempt this specific question.
-        
+
+        Rules:
+        - Continuous mode: max 1 attempt for everyone.
+        - Prize mode: free users get 1 attempt.
+        - Prize mode: subscribers can get a 2nd attempt only if first was wrong.
+
         Returns:
             Tuple of (can_attempt, error_message, current_attempt_number)
         """
-        current_attempts = db.get_user_attempts_count(user.telegram_id, question_id)
-        
-        if question_type == "continuous":
-            if current_attempts >= 1:
-                return False, "You've already answered this question.", current_attempts
+        attempts = db.get_user_question_attempts(user.telegram_id, question_id)
+        attempt_count = len(attempts)
+
+        if question_type != "prize_round":
+            if attempt_count >= 1:
+                return False, "You've already answered this question.", attempt_count
             return True, None, 1
-        
-        if current_attempts >= 1:
-            return False, "You've used all attempts for this question.", current_attempts
-        
-        return True, None, 1
+
+        if not user.is_subscriber:
+            if attempt_count >= 1:
+                return False, "You've used all attempts for this prize question.", attempt_count
+            return True, None, 1
+
+        # Subscriber prize logic.
+        if attempt_count == 0:
+            return True, None, 1
+        if attempt_count >= 2:
+            return False, "You've used both attempts for this prize question.", attempt_count
+
+        first_attempt = attempts[0]
+        if first_attempt.is_correct:
+            return False, "Second attempt is only available if your first attempt was wrong.", attempt_count
+
+        return True, None, 2
     
     @staticmethod
     def _get_wait_time(hourly_attempts: int, telegram_id: int) -> int:

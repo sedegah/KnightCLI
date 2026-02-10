@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL DEFAULT '',
     full_name TEXT NOT NULL DEFAULT '',
     ap INTEGER DEFAULT 0,
+    total_ap INTEGER DEFAULT 0,
     pp INTEGER DEFAULT 0,
     weekly_points INTEGER DEFAULT 0,
     streak INTEGER DEFAULT 0,
@@ -28,9 +29,14 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+
+-- Backward-compatible migration for existing deployments
+ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ap INTEGER DEFAULT 0;
+
 -- Create index on telegram_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_users_ap ON users(ap DESC);
+CREATE INDEX IF NOT EXISTS idx_users_total_ap ON users(total_ap DESC);
 CREATE INDEX IF NOT EXISTS idx_users_weekly_points ON users(weekly_points DESC);
 CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
 
@@ -153,11 +159,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to reset weekly points (call this weekly)
-CREATE OR REPLACE FUNCTION reset_weekly_points()
+-- Function to rollover AP at week end (Sunday 23:59 in scheduler timezone)
+CREATE OR REPLACE FUNCTION rollover_weekly_ap()
 RETURNS void AS $$
 BEGIN
-    UPDATE users SET weekly_points = 0;
+    UPDATE users
+    SET total_ap = COALESCE(total_ap, 0) + COALESCE(ap, 0),
+        ap = 0,
+        weekly_points = 0;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -207,8 +216,8 @@ ON CONFLICT (telegram_id) DO NOTHING;
 -- To manually refresh leaderboard cache:
 -- SELECT refresh_leaderboard_cache();
 
--- To reset weekly points:
--- SELECT reset_weekly_points();
+-- To rollover AP + reset weekly counters:
+-- SELECT rollover_weekly_ap();
 
 -- To view top 10 users by all-time points:
 -- SELECT * FROM leaderboard_cache ORDER BY ap DESC LIMIT 10;

@@ -21,6 +21,7 @@ SCORING = {
             "correct": 5,
             "wrong": 0,
             "speed_bonus_max": 0,
+            "attempts": 1,
         },
         QuestionType.PRIZE_ROUND: {
             "correct": 10,
@@ -34,6 +35,7 @@ SCORING = {
             "correct": 8,
             "wrong": 0,
             "speed_bonus_max": 0,
+            "attempts": 1,
         },
         QuestionType.PRIZE_ROUND: {
             "correct": 15,
@@ -63,9 +65,7 @@ RATE_LIMITS = {
 }
 
 QUESTION_TIME_LIMIT_SECONDS = 30
-SPEED_BONUS_THRESHOLD_SECONDS = 10
-
-PRIZE_ROUND_DURATION_MINUTES = 30
+PRIZE_ROUND_DURATION_MINUTES = 15
 PRIZE_ROUND_QUESTION_COUNT = 10
 
 ANTI_CHEAT = {
@@ -112,7 +112,7 @@ Play quizzes, earn points, and win prizes!
 • +15 PP in prize rounds
 • 40 questions per hour
 • 2 attempts per prize question
-• Higher speed bonuses
+• Higher speed bonuses (+0 to +7 in prize rounds)
 
 Tap /play to start!""",
     
@@ -137,7 +137,8 @@ Ready to upgrade? Contact @admin to subscribe!""",
     "stats_template": """📊 **Your Statistics**
 
 **Points:**
-• Accumulated Points (AP): {ap}
+• Current Week AP: {ap}
+• Lifetime AP: {total_ap}
 • Prize Points (PP): {pp}
 • Weekly Points: {weekly_points}
 

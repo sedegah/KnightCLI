@@ -100,14 +100,16 @@ class LeaderboardManager:
                     reward_count += 1
             
             db.save_weekly_leaderboard(leaderboard)
-            
-            db.reset_weekly_points()
-            
+
+            rollover_success, rollover_msg = db.rollover_weekly_ap()
+            if not rollover_success:
+                return False, f"Failed to rollover AP: {rollover_msg}"
+
             summary = (
                 f"✅ Weekly reset completed!\n"
                 f"Total players: {len(leaderboard)}\n"
                 f"Rewards assigned: {reward_count}\n"
-                f"Leaderboard saved and points reset."
+                f"Leaderboard saved. {rollover_msg}."
             )
             
             logger.info(summary)
@@ -165,6 +167,3 @@ class LeaderboardManager:
 
 leaderboard_manager = LeaderboardManager()
 
-
-import logging
-logger = logging.getLogger(__name__)

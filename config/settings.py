@@ -10,6 +10,7 @@ load_dotenv()
 class Settings:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     
+    # Legacy Google Sheets settings (kept only for migration scripts)
     GOOGLE_SHEETS_CREDENTIALS: str = os.getenv("GOOGLE_SHEETS_CREDENTIALS", "credentials.json")
     GOOGLE_CREDENTIALS_JSON: str = os.getenv("GOOGLE_CREDENTIALS_JSON", "")
     SPREADSHEET_ID: str = os.getenv("SPREADSHEET_ID", "")
@@ -25,6 +26,9 @@ class Settings:
     FREE_USER_HOURLY_LIMIT: int = int(os.getenv("FREE_USER_HOURLY_LIMIT", "20"))
     SUBSCRIBER_HOURLY_LIMIT: int = int(os.getenv("SUBSCRIBER_HOURLY_LIMIT", "40"))
     DAILY_REMINDER_HOUR: int = int(os.getenv("DAILY_REMINDER_HOUR", "18"))
+
+    PRIZE_ROUND_MIN_AP: int = int(os.getenv("PRIZE_ROUND_MIN_AP", "0"))
+    PRIZE_ROUND_MIN_QUESTIONS: int = int(os.getenv("PRIZE_ROUND_MIN_QUESTIONS", "0"))
     
     FREE_AP_PER_CORRECT: int = int(os.getenv("FREE_AP_PER_CORRECT", "5"))
     SUBSCRIBER_AP_PER_CORRECT: int = int(os.getenv("SUBSCRIBER_AP_PER_CORRECT", "8"))
@@ -66,9 +70,6 @@ class Settings:
         if not cls.TELEGRAM_BOT_TOKEN:
             errors.append("TELEGRAM_BOT_TOKEN is required")
         
-        if not cls.SPREADSHEET_ID:
-            errors.append("SPREADSHEET_ID is required")
-
         if not cls.SUPABASE_URL:
             errors.append("SUPABASE_URL is required")
 

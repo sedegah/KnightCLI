@@ -25,6 +25,11 @@ class QuestionManager:
         is_eligible, error = eligibility_checker.check_play_eligibility(user)
         if not is_eligible:
             return None, error
+
+        if is_prize_round:
+            can_join_prize, prize_error = eligibility_checker.check_prize_round_eligibility(user)
+            if not can_join_prize:
+                return None, prize_error
         
         question = db.get_random_question(
             question_type="",
@@ -51,8 +56,9 @@ class QuestionManager:
                     "• difficulty, category\n"
                 )
         
+        mode = "prize_round" if is_prize_round else "continuous"
         can_attempt, error, attempt_num = eligibility_checker.check_question_attempts(
-            user, question.question_id
+            user, question.question_id, question_type=mode
         )
         
         if not can_attempt:
