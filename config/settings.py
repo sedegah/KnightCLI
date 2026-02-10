@@ -26,6 +26,9 @@ class Settings:
     FREE_USER_HOURLY_LIMIT: int = int(os.getenv("FREE_USER_HOURLY_LIMIT", "20"))
     SUBSCRIBER_HOURLY_LIMIT: int = int(os.getenv("SUBSCRIBER_HOURLY_LIMIT", "40"))
     DAILY_REMINDER_HOUR: int = int(os.getenv("DAILY_REMINDER_HOUR", "18"))
+
+    PRIZE_ROUND_MIN_AP: int = int(os.getenv("PRIZE_ROUND_MIN_AP", "0"))
+    PRIZE_ROUND_MIN_QUESTIONS: int = int(os.getenv("PRIZE_ROUND_MIN_QUESTIONS", "0"))
     
     FREE_AP_PER_CORRECT: int = int(os.getenv("FREE_AP_PER_CORRECT", "5"))
     SUBSCRIBER_AP_PER_CORRECT: int = int(os.getenv("SUBSCRIBER_AP_PER_CORRECT", "8"))

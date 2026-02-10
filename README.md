@@ -216,21 +216,77 @@ telegram-quiz-bot/
 
 ## Game Mechanics
 
-### Scoring System
+### A. Continuous Play Scoring (All Day)
 
-#### Fair & Transparent Scoring (All Modes)
-- Correct answer: **+10**
-- Wrong answer: **0**
+| Action | Free User | Subscriber |
+|---|---:|---:|
+| Correct answer | +5 AP | +8 AP |
+| Wrong answer | 0 | 0 |
+| Timeout | 0 | 0 |
 
-#### Speed Bonus
-- Answered in **<30%** of question time: **+5**
-- Answered in **<50%** of question time: **+3**
-- Otherwise: **+0**
+**Soft Limits**
+- Free: 20 questions/hour
+- Subscriber: 40 questions/hour
+
+### B. Prize Round Scoring (High Stakes)
+
+| Action | Free User | Subscriber |
+|---|---:|---:|
+| Correct answer | +10 PP | +15 PP |
+| Speed bonus | +0 to +5 | +0 to +7 |
+| Wrong answer | 0 | 0 |
+
+### Attempt Advantage (Subscriber Edge)
+- Free users: 1 attempt per prize question
+- Subscribers: 2 attempts per prize question
+  - Second attempt only if first attempt was wrong
+  - Second attempt earns 80% of base points
 
 ### Streak Bonuses
 - 3-day streak: +5
 - 7-day streak: +15
 - 30-day streak: +50
+
+### 0.3 Play Frequency (Always-on + Events)
+**Continuous Mode**
+- Available all day
+- Questions rotate automatically
+- Category-balanced (roadmap)
+- Lower difficulty
+
+**Prize Mode**
+- Happens 2x daily
+- Time-limited (15 minutes)
+- Higher difficulty
+- Announced in advance
+
+Missing a prize round means no penalty, but no reward chance for that event.
+
+### 0.4 Reward Logic (Event-based & Sustainable)
+1. Players accumulate AP all day.
+2. At prize time, only eligible players compete.
+3. Winners are determined by PP; AP can be used for seeding/tiebreakers.
+
+### 0.5 Subscription (Power, not pay-to-win)
+**Subscriber Benefits**
+- Higher AP per question
+- Higher PP per prize question
+- Two attempts in prize rounds
+- Higher hourly question limit
+- Priority prize eligibility (roadmap)
+
+**Subscribers do not get**
+- Automatic wins
+- Guaranteed prizes
+- Unlimited attempts
+
+### 0.6 Anti-cheat Rules
+- One account per Telegram ID
+- Hourly caps
+- Question rotation memory
+- PP only from prize rounds
+- Manual payout approval
+- Suspicious accounts flagged automatically
 
 ### Prize Round Schedule
 - Morning Round: 9:00 AM UTC

@@ -4,7 +4,7 @@ from apscheduler.triggers.cron import CronTrigger
 import logging
 
 from config.settings import settings
-from config.constants import MESSAGES
+from config.constants import MESSAGES, PRIZE_ROUND_DURATION_MINUTES
 from game.leaderboard import leaderboard_manager
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ class PrizeRoundScheduler:
         message = (
             f"🏆 **{round_type.upper()} PRIZE ROUND STARTED!**\n\n"
             f"Compete for the top spots and win rewards!\n\n"
-            f"**Duration:** 30 minutes\n"
+            f"**Duration:** {PRIZE_ROUND_DURATION_MINUTES} minutes\n"
             f"**Questions:** 10 special questions\n"
             f"**Higher Points:** PP (Prize Points)\n\n"
             f"**Current Leaders:**\n{leaderboard_preview}\n\n"
@@ -124,7 +124,7 @@ class PrizeRoundScheduler:
         self.scheduler.add_job(
             self._end_prize_round,
             "date",
-            run_date=datetime.now(settings.TIMEZONE) + timedelta(minutes=30),
+            run_date=datetime.now(settings.TIMEZONE) + timedelta(minutes=PRIZE_ROUND_DURATION_MINUTES),
             kwargs={"round_type": round_type},
             id=f"end_{round_type}_round"
         )

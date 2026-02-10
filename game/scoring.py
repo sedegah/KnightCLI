@@ -1,17 +1,14 @@
-"""Calculates points based on fair and transparent scoring rules."""
+"""Calculates points based on mode, user tier, speed, and streaks."""
 from datetime import datetime
 from typing import Tuple
 import logging
 
 from config.constants import (
-    BASE_CORRECT_POINTS,
-    BASE_WRONG_POINTS,
+    SCORING,
     STREAK_BONUSES,
+    UserType,
+    QuestionType,
     PointType,
-    SPEED_BONUS_FAST_THRESHOLD,
-    SPEED_BONUS_MEDIUM_THRESHOLD,
-    SPEED_BONUS_FAST_POINTS,
-    SPEED_BONUS_MEDIUM_POINTS,
 )
 from database.models import User, Question
 
@@ -28,24 +25,32 @@ class ScoringEngine:
         attempt_number: int = 1,
         is_prize_round: bool = False,
     ) -> Tuple[int, dict]:
-        """Calculate points for an attempt.
+        """Calculate points for an attempt."""
+        question_mode = QuestionType.PRIZE_ROUND if is_prize_round else QuestionType.CONTINUOUS
+        config = SCORING[user.user_type][question_mode]
 
-        Rules:
-        - Correct answer: +10, wrong: +0
-        - Speed bonus: +5 if <30% of time limit, +3 if <50%, else +0
-        - Streak bonus: 3d +5, 7d +15, 30d +50
-        """
-        _ = attempt_number  # intentionally unused in the transparent scoring model
-        _ = is_prize_round  # point type still differs elsewhere; score formula is universal
-
-        base_points = BASE_CORRECT_POINTS if is_correct else BASE_WRONG_POINTS
-        if base_points == 0:
+        if not is_correct:
             return 0, {"base": 0, "speed_bonus": 0, "streak_bonus": 0, "total": 0}
 
-        speed_bonus = ScoringEngine._calculate_speed_bonus(
-            response_time=response_time_seconds,
-            time_limit_seconds=question.time_limit_seconds,
-        )
+        base_points = int(config["correct"])
+
+        # Subscriber second attempt in prize rounds earns 80% of base points.
+        if (
+            question_mode == QuestionType.PRIZE_ROUND
+            and user.user_type == UserType.SUBSCRIBER
+            and attempt_number == 2
+        ):
+            multiplier = float(config.get("second_attempt_multiplier", 1.0))
+            base_points = int(base_points * multiplier)
+
+        speed_bonus = 0
+        if question_mode == QuestionType.PRIZE_ROUND:
+            speed_bonus = ScoringEngine._calculate_speed_bonus(
+                response_time=response_time_seconds,
+                time_limit_seconds=question.time_limit_seconds,
+                max_bonus=int(config.get("speed_bonus_max", 0)),
+            )
+
         streak_bonus = ScoringEngine._get_streak_bonus(user.streak)
         total_points = base_points + speed_bonus + streak_bonus
 
@@ -60,18 +65,13 @@ class ScoringEngine:
         return total_points, breakdown
 
     @staticmethod
-    def _calculate_speed_bonus(response_time: float, time_limit_seconds: int) -> int:
-        """Apply speed bonus based on % of allowed time consumed."""
-        if response_time <= 0 or time_limit_seconds <= 0:
+    def _calculate_speed_bonus(response_time: float, time_limit_seconds: int, max_bonus: int) -> int:
+        """Linear speed bonus from max at fastest response down to 0 at time limit."""
+        if response_time <= 0 or time_limit_seconds <= 0 or max_bonus <= 0:
             return 0
 
-        ratio = response_time / float(time_limit_seconds)
-
-        if ratio < SPEED_BONUS_FAST_THRESHOLD:
-            return SPEED_BONUS_FAST_POINTS
-        if ratio < SPEED_BONUS_MEDIUM_THRESHOLD:
-            return SPEED_BONUS_MEDIUM_POINTS
-        return 0
+        ratio = min(max(response_time / float(time_limit_seconds), 0.0), 1.0)
+        return int(round(max_bonus * (1.0 - ratio)))
 
     @staticmethod
     def _get_streak_bonus(streak: int) -> int:
@@ -84,11 +84,6 @@ class ScoringEngine:
 
     @staticmethod
     def update_user_streak(user: User) -> Tuple[User, bool]:
-        """Update user's streak based on last played date.
-
-        Returns:
-            Tuple of (updated_user, streak_broken)
-        """
         today = datetime.utcnow().date()
         streak_broken = False
 

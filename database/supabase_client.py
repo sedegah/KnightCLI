@@ -251,6 +251,23 @@ class SupabaseDatabase:
             logger.error(f"Error getting attempts for question {question_id}: {e}")
             return []
     
+
+    def get_user_question_attempts(self, telegram_id: int, question_id: str) -> List[Attempt]:
+        """Get a user's attempts for a specific question (oldest first)."""
+        try:
+            response = (
+                self.client.table('attempts')
+                .select('*')
+                .eq('telegram_id', telegram_id)
+                .eq('question_id', question_id)
+                .order('timestamp', desc=False)
+                .execute()
+            )
+            return [self._dict_to_attempt(row) for row in (response.data or [])]
+        except Exception as e:
+            logger.error(f"Error getting user question attempts: {e}")
+            return []
+
     def get_user_attempts_count(self, telegram_id: int, question_id: str) -> int:
         try:
             response = (

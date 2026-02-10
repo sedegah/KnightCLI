@@ -15,14 +15,37 @@ class PointType(Enum):
     AP = "ap"
     PP = "pp"
 
-BASE_CORRECT_POINTS = 10
-BASE_WRONG_POINTS = 0
-
-# Speed bonus thresholds as percentage of question time limit
-SPEED_BONUS_FAST_THRESHOLD = 0.30
-SPEED_BONUS_MEDIUM_THRESHOLD = 0.50
-SPEED_BONUS_FAST_POINTS = 5
-SPEED_BONUS_MEDIUM_POINTS = 3
+SCORING = {
+    UserType.FREE: {
+        QuestionType.CONTINUOUS: {
+            "correct": 5,
+            "wrong": 0,
+            "speed_bonus_max": 0,
+            "attempts": 1,
+        },
+        QuestionType.PRIZE_ROUND: {
+            "correct": 10,
+            "wrong": 0,
+            "speed_bonus_max": 5,
+            "attempts": 1,
+        },
+    },
+    UserType.SUBSCRIBER: {
+        QuestionType.CONTINUOUS: {
+            "correct": 8,
+            "wrong": 0,
+            "speed_bonus_max": 0,
+            "attempts": 1,
+        },
+        QuestionType.PRIZE_ROUND: {
+            "correct": 15,
+            "wrong": 0,
+            "speed_bonus_max": 7,
+            "attempts": 2,
+            "second_attempt_multiplier": 0.8,
+        },
+    },
+}
 
 STREAK_BONUSES = {
     3: 5,
@@ -42,7 +65,7 @@ RATE_LIMITS = {
 }
 
 QUESTION_TIME_LIMIT_SECONDS = 30
-PRIZE_ROUND_DURATION_MINUTES = 30
+PRIZE_ROUND_DURATION_MINUTES = 15
 PRIZE_ROUND_QUESTION_COUNT = 10
 
 ANTI_CHEAT = {
@@ -88,8 +111,8 @@ Play quizzes, earn points, and win prizes!
 • +10 points per correct answer
 • Speed bonus: +5 (<30% time) / +3 (<50% time)
 • 40 questions per hour
-• Keep your streak for bonus points (3/7/30 days)
-• Transparent scoring for every question
+• 2 attempts per prize question
+• Higher speed bonuses (+0 to +7 in prize rounds)
 
 Tap /play to start!""",
     
