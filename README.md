@@ -153,7 +153,7 @@ Proprietary - All rights reserved
 
 - Python 3.10+
 - Telegram Bot Token (from @BotFather)
-- Google Sheets API credentials
+- Supabase project (URL + service key)
 
 ### Installation
 
@@ -165,8 +165,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your credentials
 
-# Initialize Google Sheets database
-python scripts/setup_sheets.py
+# Ensure Supabase schema is applied (see database/supabase_schema.sql)
 
 # Run the bot
 python main.py
@@ -178,8 +177,8 @@ Edit `.env` file:
 
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_here
-GOOGLE_SHEETS_CREDENTIALS=path/to/credentials.json
-SPREADSHEET_ID=your_spreadsheet_id
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_service_role_key
 ADMIN_TELEGRAM_IDS=123456789,987654321
 ```
 
@@ -201,7 +200,8 @@ telegram-quiz-bot/
 │   ├── eligibility.py      # Rate limiting and validation
 │   └── leaderboard.py      # Ranking and rewards
 ├── database/
-│   ├── sheets_client.py    # Google Sheets operations
+│   ├── supabase_client.py  # Supabase operations
+│   ├── sheets_client.py    # Legacy migration helper (not used at runtime)
 │   └── models.py           # Data models
 ├── scheduler/
 │   ├── prize_rounds.py     # Prize round automation
@@ -210,7 +210,8 @@ telegram-quiz-bot/
 │   ├── anti_cheat.py       # Anti-cheat measures
 │   └── helpers.py          # Utility functions
 └── scripts/
-    └── setup_sheets.py     # Database initialization
+    ├── migrate_to_supabase.py # Sheets -> Supabase migration helper
+    └── setup_sheets.py     # Legacy setup helper
 ```
 
 ## Game Mechanics

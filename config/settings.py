@@ -10,6 +10,7 @@ load_dotenv()
 class Settings:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     
+    # Legacy Google Sheets settings (kept only for migration scripts)
     GOOGLE_SHEETS_CREDENTIALS: str = os.getenv("GOOGLE_SHEETS_CREDENTIALS", "credentials.json")
     GOOGLE_CREDENTIALS_JSON: str = os.getenv("GOOGLE_CREDENTIALS_JSON", "")
     SPREADSHEET_ID: str = os.getenv("SPREADSHEET_ID", "")
@@ -66,9 +67,6 @@ class Settings:
         if not cls.TELEGRAM_BOT_TOKEN:
             errors.append("TELEGRAM_BOT_TOKEN is required")
         
-        if not cls.SPREADSHEET_ID:
-            errors.append("SPREADSHEET_ID is required")
-
         if not cls.SUPABASE_URL:
             errors.append("SUPABASE_URL is required")
 
