@@ -92,7 +92,12 @@ class BotHandlers:
             )
             return
         
-        question, error = question_manager.get_question_for_user(user, is_prize_round=False)
+        is_prize_round = False
+        prize_scheduler = context.application.bot_data.get("prize_scheduler") if context and context.application else None
+        if prize_scheduler and prize_scheduler.is_prize_round_active_now():
+            is_prize_round = True
+
+        question, error = question_manager.get_question_for_user(user, is_prize_round=is_prize_round)
         
         if error:
             await update.message.reply_text(

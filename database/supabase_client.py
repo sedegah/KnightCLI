@@ -356,6 +356,34 @@ class SupabaseDatabase:
     
     # ===== LEADERBOARD OPERATIONS =====
     
+
+    def get_prize_round_rankings(
+        self,
+        limit: int = 10,
+        min_ap: int = 0,
+        min_questions: int = 0,
+    ) -> List[User]:
+        """Get rankings for prize rounds, sorted by PP then AP (tiebreak)."""
+        try:
+            query = (
+                self.client.table('users')
+                .select('*')
+                .order('pp', desc=True)
+                .order('ap', desc=True)
+                .gt('telegram_id', 0)
+            )
+            if min_ap > 0:
+                query = query.gte('ap', min_ap)
+            if min_questions > 0:
+                query = query.gte('total_questions', min_questions)
+
+            response = query.limit(limit).execute()
+            users = [self._dict_to_user(row) for row in (response.data or [])]
+            return [user for user in users if user.pp > 0]
+        except Exception as e:
+            logger.error(f"Error getting prize round rankings: {e}")
+            return []
+
     def get_top_users_by_ap(self, limit: int = 100) -> List[User]:
         """Get top users by all-time points."""
         try:

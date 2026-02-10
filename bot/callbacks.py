@@ -88,10 +88,15 @@ class CallbackHandlers:
             await query.edit_message_text("Please use /start to register first!")
             return
         
+        active_key = f"{telegram_id}_{question_id}"
+        active_data = question_manager.active_questions.get(active_key, {})
+        is_prize_round = bool(active_data.get("is_prize_round", False))
+
         success, result = question_manager.process_answer(
             user=user,
             question_id=question_id,
-            selected_option=selected_option
+            selected_option=selected_option,
+            is_prize_round=is_prize_round,
         )
         
         if not success:
@@ -140,7 +145,7 @@ class CallbackHandlers:
             
             if has_2nd_attempt:
                 response_text += "💎 **You have 1 more attempt!**\n"
-                response_text += "Second attempt earns 80% of points.\n"
+                response_text += "Second attempt earns 80% of base points.\n"
             else:
                 response_text += "Keep practicing! Every question helps you learn. 📚\n"
             
@@ -165,7 +170,12 @@ class CallbackHandlers:
             await CallbackHandlers._safe_edit_message(query, "Please use /start to register first!")
             return
         
-        question, error = question_manager.get_question_for_user(user, is_prize_round=False)
+        is_prize_round = False
+        prize_scheduler = context.application.bot_data.get("prize_scheduler") if context and context.application else None
+        if prize_scheduler and prize_scheduler.is_prize_round_active_now():
+            is_prize_round = True
+
+        question, error = question_manager.get_question_for_user(user, is_prize_round=is_prize_round)
         
         if error:
             await CallbackHandlers._safe_edit_message(
@@ -252,6 +262,7 @@ class CallbackHandlers:
         
         stats_text = MESSAGES["stats_template"].format(
             ap=f"{user.ap:,}",
+            total_ap=f"{user.total_ap:,}",
             pp=f"{user.pp:,}",
             weekly_points=f"{user.weekly_points:,}",
             streak=user.streak,

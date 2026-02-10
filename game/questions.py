@@ -69,6 +69,7 @@ class QuestionManager:
             "question": question,
             "start_time": datetime.utcnow(),
             "attempt_number": attempt_num,
+            "is_prize_round": is_prize_round,
         }
         
         logger.info(f"Delivered question {question.question_id} to user {user.telegram_id}")
@@ -105,7 +106,8 @@ class QuestionManager:
             return False, {"error": warning}
         
         is_correct = selected_option.upper() == question.correct_option.upper()
-        
+        is_prize_round = bool(active_data.get("is_prize_round", is_prize_round))
+
         points, breakdown = scoring_engine.calculate_points(
             user=user,
             question=question,
@@ -162,6 +164,7 @@ class QuestionManager:
             "attempt_number": attempt_number,
             "user_rank": user_rank,
             "question": question,
+            "is_prize_round": is_prize_round,
         }
         
         logger.info(f"Processed answer for user {user.telegram_id}: correct={is_correct}, points={points}")
