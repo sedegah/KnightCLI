@@ -379,32 +379,53 @@ class SupabaseDatabase:
             return False
 
     def get_weekly_leaderboard(self, limit: int = 50) -> List[LeaderboardEntry]:
-        try:
-            now = datetime.utcnow()
-            week_number = now.isocalendar()[1]
-            year = now.year
-            response = (
-                self.client.table('leaderboard_cache')
-                .select('telegram_id,username,weekly_points')
-                .order('weekly_points', desc=True)
-                .limit(limit)
-                .execute()
-            )
+        now = datetime.utcnow()
+        week_number = now.isocalendar()[1]
+        year = now.year
+
+        def _build_leaderboard(rows: List[Dict[str, Any]]) -> List[LeaderboardEntry]:
             leaderboard: List[LeaderboardEntry] = []
-            for rank, row in enumerate(response.data or [], start=1):
+            for rank, row in enumerate(rows, start=1):
+                username = row.get('username') or row.get('full_name') or ""
                 leaderboard.append(
                     LeaderboardEntry(
                         week_number=week_number,
                         year=year,
                         telegram_id=row.get('telegram_id'),
-                        username=row.get('username') or "",
+                        username=username,
                         points=int(row.get('weekly_points') or 0),
                         rank=rank,
                     )
                 )
             return leaderboard
+
+        try:
+            response = (
+                self.client.table('leaderboard_cache')
+                .select('telegram_id,username,weekly_points')
+                .order('weekly_points', desc=True)
+                .gt('weekly_points', 0)
+                .limit(limit)
+                .execute()
+            )
+            leaderboard = _build_leaderboard(response.data or [])
+            if leaderboard:
+                return leaderboard
         except Exception as e:
-            logger.error(f"Error getting leaderboard: {e}")
+            logger.warning(f"Error getting leaderboard from cache, falling back to users table: {e}")
+
+        try:
+            response = (
+                self.client.table('users')
+                .select('telegram_id,username,full_name,weekly_points')
+                .order('weekly_points', desc=True)
+                .gt('weekly_points', 0)
+                .limit(limit)
+                .execute()
+            )
+            return _build_leaderboard(response.data or [])
+        except Exception as e:
+            logger.error(f"Error getting leaderboard from users table: {e}")
             return []
 
     def get_user_rank(self, telegram_id: int) -> int:
