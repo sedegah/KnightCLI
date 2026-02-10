@@ -15,35 +15,14 @@ class PointType(Enum):
     AP = "ap"
     PP = "pp"
 
-SCORING = {
-    UserType.FREE: {
-        QuestionType.CONTINUOUS: {
-            "correct": 5,
-            "wrong": 0,
-            "speed_bonus_max": 0,
-        },
-        QuestionType.PRIZE_ROUND: {
-            "correct": 10,
-            "wrong": 0,
-            "speed_bonus_max": 5,
-            "attempts": 1,
-        },
-    },
-    UserType.SUBSCRIBER: {
-        QuestionType.CONTINUOUS: {
-            "correct": 8,
-            "wrong": 0,
-            "speed_bonus_max": 0,
-        },
-        QuestionType.PRIZE_ROUND: {
-            "correct": 15,
-            "wrong": 0,
-            "speed_bonus_max": 7,
-            "attempts": 2,
-            "second_attempt_multiplier": 0.8,
-        },
-    },
-}
+BASE_CORRECT_POINTS = 10
+BASE_WRONG_POINTS = 0
+
+# Speed bonus thresholds as percentage of question time limit
+SPEED_BONUS_FAST_THRESHOLD = 0.30
+SPEED_BONUS_MEDIUM_THRESHOLD = 0.50
+SPEED_BONUS_FAST_POINTS = 5
+SPEED_BONUS_MEDIUM_POINTS = 3
 
 STREAK_BONUSES = {
     3: 5,
@@ -63,8 +42,6 @@ RATE_LIMITS = {
 }
 
 QUESTION_TIME_LIMIT_SECONDS = 30
-SPEED_BONUS_THRESHOLD_SECONDS = 10
-
 PRIZE_ROUND_DURATION_MINUTES = 30
 PRIZE_ROUND_QUESTION_COUNT = 10
 
@@ -104,31 +81,31 @@ Play quizzes, earn points, and win prizes!
 • Top players win!
 
 **Your Status:** Free User
-• +5 AP per correct answer
+• +10 points per correct answer
 • 20 questions per hour
 
 💎 **Upgrade to Premium** for:
-• +8 AP per correct answer
-• +15 PP in prize rounds
+• +10 points per correct answer
+• Speed bonus: +5 (<30% time) / +3 (<50% time)
 • 40 questions per hour
-• 2 attempts per prize question
-• Higher speed bonuses
+• Keep your streak for bonus points (3/7/30 days)
+• Transparent scoring for every question
 
 Tap /play to start!""",
     
     "subscribe_info": """💎 **Premium Subscription Benefits**
 
 **Higher Points:**
-• +8 AP per correct answer (vs 5 free)
-• +15 PP in prize rounds (vs 10 free)
+• +10 base points for each correct answer
+• Speed bonus: +5 (<30% time), +3 (<50% time)
 
 **More Attempts:**
-• 2 attempts per prize question
+• Keep your streak for bonus points (3/7/30 days)
 • 40 questions per hour (vs 20 free)
 
 **Better Bonuses:**
-• Up to +7 speed bonus (vs +5 free)
-• 80% points on 2nd attempt
+• Streak bonus: +5 (3d), +15 (7d), +50 (30d)
+• Scoring is fair and transparent for all players
 
 **Price:** $4.99/month
 
@@ -137,7 +114,8 @@ Ready to upgrade? Contact @admin to subscribe!""",
     "stats_template": """📊 **Your Statistics**
 
 **Points:**
-• Accumulated Points (AP): {ap}
+• Current Week AP: {ap}
+• Lifetime AP: {total_ap}
 • Prize Points (PP): {pp}
 • Weekly Points: {weekly_points}
 

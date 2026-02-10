@@ -125,6 +125,7 @@ class BotHandlers:
         
         stats_text = MESSAGES["stats_template"].format(
             ap=f"{user.ap:,}",
+            total_ap=f"{user.total_ap:,}",
             pp=f"{user.pp:,}",
             weekly_points=f"{user.weekly_points:,}",
             streak=user.streak,
