@@ -1,0 +1,33 @@
+{
+  "name": "gnex-telegram-bot",
+  "version": "2.0.0",
+  "description": "G-NEX Competitive Quiz Platform - Cloudflare Workers Edition",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "test": "vitest",
+    "db:init": "wrangler d1 execute gnex-db --file=./src/database/schema.sql",
+    "db:migrate": "wrangler d1 migrations apply gnex-db"
+  },
+  "keywords": [
+    "telegram",
+    "quiz",
+    "cloudflare",
+    "workers",
+    "competitive",
+    "gaming"
+  ],
+  "author": "G-NEX Team",
+  "license": "MIT",
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "wrangler": "^3.24.0",
+    "vitest": "^1.2.0"
+  }
+}

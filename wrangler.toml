@@ -1,0 +1,53 @@
+name = "gnex-telegram-bot"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare Workers settings
+workers_dev = true
+send_metrics = true
+
+# D1 Database binding (relational data)
+[[d1_databases]]
+binding = "DB"
+database_name = "gnex-db"
+database_id = "" # Add after creating: wrangler d1 create gnex-db
+
+# KV Namespace binding (fast cache)
+[[kv_namespaces]]
+binding = "KV"
+id = "" # Add after creating: wrangler kv:namespace create "GNEX_KV"
+
+# Environment variables (set via: wrangler secret put <KEY>)
+[vars]
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"
+
+# Secrets (use wrangler secret put <name>):
+# TELEGRAM_BOT_TOKEN
+# TELEGRAM_WEBHOOK_SECRET
+# ADMIN_TELEGRAM_IDS (comma-separated)
+
+# Rate limiting
+[limits]
+cpu_ms = 50
+
+# Local development environment
+[env.dev]
+name = "gnex-telegram-bot-dev"
+workers_dev = true
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+LOG_LEVEL = "debug"
+
+# D1 database for development
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "gnex-db-dev"
+database_id = "" # Add after creating: wrangler d1 create gnex-db-dev
+
+# KV namespace for development
+[[env.dev.kv_namespaces]]
+binding = "KV"
+id = "" # Add after creating: wrangler kv:namespace create "GNEX_KV" --env dev
