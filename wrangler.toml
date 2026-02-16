@@ -8,19 +8,19 @@ workers_dev = true
 send_metrics = true
 
 # D1 Database binding (relational data)
-# REQUIRED: Create with: npx wrangler d1 create gnex-db
-# Then paste the database_id below
-[[d1_databases]]
-binding = "DB"
-database_name = "gnex-db"
-database_id = "" # ← PASTE YOUR D1 DATABASE ID HERE
+# STEP 1: Uncomment and create: npx wrangler d1 create gnex-db
+# STEP 2: Paste the database_id below
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "gnex-db"
+# database_id = "" # ← PASTE YOUR D1 DATABASE ID HERE
 
 # KV Namespace binding (fast cache)
-# REQUIRED: Create with: npx wrangler kv:namespace create "GNEX_KV"
-# Then paste the id below
-[[kv_namespaces]]
-binding = "KV"
-id = "" # ← PASTE YOUR KV NAMESPACE ID HERE
+# STEP 1: Uncomment and create: npx wrangler kv:namespace create "GNEX_KV"
+# STEP 2: Paste the id below
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "" # ← PASTE YOUR KV NAMESPACE ID HERE
 
 # Environment variables (set via: wrangler secret put <KEY>)
 [vars]
@@ -46,16 +46,16 @@ ENVIRONMENT = "development"
 LOG_LEVEL = "debug"
 
 # D1 database for development
-# REQUIRED: Create with: npx wrangler d1 create gnex-db-dev
-# Then paste the database_id below
-[[env.dev.d1_databases]]
-binding = "DB"
-database_name = "gnex-db-dev"
-database_id = "" # ← PASTE YOUR DEV D1 DATABASE ID HERE
+# STEP 1: Uncomment and create: npx wrangler d1 create gnex-db-dev
+# STEP 2: Paste the database_id below
+# [[env.dev.d1_databases]]
+# binding = "DB"
+# database_name = "gnex-db-dev"
+# database_id = "" # ← PASTE YOUR DEV D1 DATABASE ID HERE
 
 # KV namespace for development
-# REQUIRED: Create with: npx wrangler kv:namespace create "GNEX_KV" --env dev
-# Then paste the id below
-[[env.dev.kv_namespaces]]
-binding = "KV"
-id = "" # ← PASTE YOUR DEV KV NAMESPACE ID HERE
+# STEP 1: Uncomment and create: npx wrangler kv:namespace create "GNEX_KV" --env dev
+# STEP 2: Paste the id below
+# [[env.dev.kv_namespaces]]
+# binding = "KV"
+# id = "" # ← PASTE YOUR DEV KV NAMESPACE ID HERE
