@@ -2,25 +2,30 @@
  * Security Utilities
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 /**
- * Verify Telegram webhook request
+ * Verify Telegram webhook request using proper secret validation
  */
 export function verifyTelegramRequest(request, secret) {
   try {
-    // In production, implement proper webhook verification
-    // For now, we'll just check if the secret is present
-    
-    // Telegram sends X-Telegram-Bot-Api-Secret-Token header
+    // Telegram sends X-Telegram-Bot-Api-Secret-Token header for webhook verification
     const telegramSecret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
     
-    if (!secret || !telegramSecret) {
+    if (!secret) {
+      console.warn('No webhook secret configured - allowing requests in development mode');
       return true; // Allow if no secret is configured (development)
     }
     
+    if (!telegramSecret) {
+      console.warn('Missing X-Telegram-Bot-Api-Secret-Token header');
+      return false;
+    }
+    
+    // Direct string comparison for webhook tokens (not hex)
     return telegramSecret === secret;
   } catch (error) {
+    console.error('Error verifying Telegram request:', error);
     return false;
   }
 }

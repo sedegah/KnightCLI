@@ -1,6 +1,6 @@
 name = "gnex-telegram-bot"
 main = "src/index.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"   
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare Workers settings
@@ -8,33 +8,22 @@ workers_dev = true
 send_metrics = true
 
 # D1 Database binding (relational data)
-# STEP 1: Uncomment and create: npx wrangler d1 create gnex-db
-# STEP 2: Paste the database_id below
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "gnex-db"
-# database_id = "" # ← PASTE YOUR D1 DATABASE ID HERE
+# database_id = "512ea081-b51d-4203-8964-f6070e526fcf" 
 
 # KV Namespace binding (fast cache)
-# STEP 1: Uncomment and create: npx wrangler kv:namespace create "GNEX_KV"
-# STEP 2: Paste the id below
-# [[kv_namespaces]]
-# binding = "KV"
-# id = "" # ← PASTE YOUR KV NAMESPACE ID HERE
+[[kv_namespaces]]
+binding = "GNEX_KV"
+id = "05afb820aabb4a3eb9f144f21341bfc7"
 
-# Environment variables (set via: wrangler secret put <KEY>)
+# Environment variables (access via ENV in code)
 [vars]
 ENVIRONMENT = "production"
 LOG_LEVEL = "info"
+ADMIN_TELEGRAM_IDS = "123456789,987654321"        
 
-# Secrets (use wrangler secret put <name>):
-# TELEGRAM_BOT_TOKEN
-# TELEGRAM_WEBHOOK_SECRET
-# ADMIN_TELEGRAM_IDS (comma-separated)
-
-# Rate limiting
-[limits]
-cpu_ms = 50
 
 # Local development environment
 [env.dev]
@@ -44,18 +33,15 @@ workers_dev = true
 [env.dev.vars]
 ENVIRONMENT = "development"
 LOG_LEVEL = "debug"
+ADMIN_TELEGRAM_IDS = "123456789,987654321"
 
 # D1 database for development
-# STEP 1: Uncomment and create: npx wrangler d1 create gnex-db-dev
-# STEP 2: Paste the database_id below
 # [[env.dev.d1_databases]]
 # binding = "DB"
 # database_name = "gnex-db-dev"
-# database_id = "" # ← PASTE YOUR DEV D1 DATABASE ID HERE
+# database_id = "752a111e-1154-4a5b-9854-7784320dc6db" 
 
 # KV namespace for development
-# STEP 1: Uncomment and create: npx wrangler kv:namespace create "GNEX_KV" --env dev
-# STEP 2: Paste the id below
-# [[env.dev.kv_namespaces]]
-# binding = "KV"
-# id = "" # ← PASTE YOUR DEV KV NAMESPACE ID HERE
+[[env.dev.kv_namespaces]]
+binding = "GNEX_KV"
+id = "89611257fbea4123b18909f67a02bec1"

@@ -1,163 +1,254 @@
 /**
- * Question Manager
- * Handles question delivery and answer processing
+ * G-NEX Question Manager
+ * Handles question delivery, scoring, and game flow
  */
 
-import { ScoringEngine } from './scoring.js';
-import { EligibilityChecker } from './eligibility.js';
 import { logger } from '../utils/logger.js';
-import { generateId } from '../utils/helpers.js';
 
 export class QuestionManager {
-  constructor(db) {
-    this.db = db;
+  constructor(database) {
+    this.db = database;
   }
 
-  /**
-   * Get a question for the user
-   */
   async getQuestionForUser(user, isPrizeRound = false) {
-    // Check eligibility
-    const eligibility = await EligibilityChecker.checkPlayEligibility(user, this.db);
-    if (!eligibility.allowed) {
-      return { question: null, error: eligibility.message };
-    }
+    try {
+      // Check rate limiting
+      const rateLimitCount = await this.db.cacheRateLimit(user.telegram_id, 'play');
+      const maxAttempts = user.subscription_status === 'subscriber' ? 40 : 20;
+      
+      if (rateLimitCount > maxAttempts) {
+        return {
+          question: null,
+          error: `⏰️ Rate limit reached! You can play ${maxAttempts} times per hour.\n\n💎 Upgrade to Premium for 40 attempts/hour!`
+        };
+      }
 
-    // Get random question
-    const question = await this.db.getRandomQuestion(user.telegramId, true);
-    
-    if (!question) {
+      // Check for active question
+      const activeQuestion = await this.db.getActiveQuestion(user.telegram_id);
+      if (activeQuestion) {
+        const timeSinceCached = Date.now() - activeQuestion.cachedAt;
+        if (timeSinceCached < 5 * 60 * 1000) { // 5 minutes
+          return {
+            question: activeQuestion.question,
+            error: null
+          };
+        }
+      }
+
+      // Get new question
+      const question = await this.db.getRandomQuestion(user.telegram_id, true);
+      if (!question) {
+        return {
+          question: null,
+          error: '🎉 **You\'ve answered all available questions!**\n\nNew questions are added regularly. Check back soon!'
+        };
+      }
+
+      // Cache the active question
+      await this.db.cacheActiveQuestion(user.telegram_id, {
+        question,
+        startTime: Date.now(),
+        attemptNumber: 1,
+        isPrizeRound
+      });
+
+      return {
+        question,
+        error: null
+      };
+    } catch (error) {
+      logger.error('Error getting question for user:', error);
       return {
         question: null,
-        error: '🎉 **You\'ve answered all available questions!**\n\nNew questions are added regularly. Check back soon!'
+        error: '⚠️ An error occurred. Please try again.'
       };
     }
-
-    // Check attempt limit
-    const attemptCount = await this.db.getAttemptCount(user.telegramId, question.questionId);
-    const maxAttempts = user.subscriptionStatus === 'subscriber' && isPrizeRound ? 2 : 1;
-
-    if (attemptCount >= maxAttempts) {
-      // Try another question
-      return this.getQuestionForUser(user, isPrizeRound);
-    }
-
-    // Cache active question
-    const questionData = {
-      userId: user.telegramId,
-      question,
-      startTime: Date.now(),
-      attemptNumber: attemptCount + 1,
-      isPrizeRound
-    };
-
-    await this.db.cacheActiveQuestion(user.telegramId, questionData);
-
-    logger.info(`Delivered question ${question.questionId} to user ${user.telegramId}`);
-    return { question, error: null };
   }
 
-  /**
-   * Process user's answer
-   */
   async processAnswer(user, questionId, selectedOption, isPrizeRound = false) {
-    // Get active question from cache
-    const activeData = await this.db.getActiveQuestion(user.telegramId);
-    
-    if (!activeData || activeData.question.questionId !== questionId) {
+    try {
+      // Get question
+      const question = await this.db.getQuestion(questionId);
+      if (!question) {
+        return {
+          success: false,
+          error: 'Question not found'
+        };
+      }
+
+      // Get active question data
+      const activeData = await this.db.getActiveQuestion(user.telegram_id);
+      if (!activeData || activeData.question.id !== question.id) {
+        return {
+          success: false,
+          error: 'No active question found'
+        };
+      }
+
+      // Calculate response time
+      const responseTime = (Date.now() - activeData.startTime) / 1000;
+
+      // Check if correct
+      const isCorrect = selectedOption.toUpperCase() === question.correct_option.toUpperCase();
+
+      // Calculate points
+      const points = await this.calculatePoints(user, question, isCorrect, responseTime, isPrizeRound);
+
+      // Create attempt record
+      await this.db.createAttempt({
+        telegramId: user.telegram_id,
+        questionId: question.question_id || question.id,
+        selectedOption,
+        isCorrect,
+        responseTimeSeconds: Math.round(responseTime),
+        pointsAwarded: points.total,
+        pointType: points.type,
+        attemptNumber: activeData.attemptNumber
+      });
+
+      // Update question stats
+      await this.db.updateQuestionStats(question.id, isCorrect, responseTime);
+
+      // Update user stats
+      const updates = {
+        total_questions: user.total_questions + 1,
+        correct_answers: user.correct_answers + (isCorrect ? 1 : 0),
+        ap: user.ap + points.ap,
+        pp: user.pp + points.pp,
+        weekly_points: user.weekly_points + points.total,
+        last_played_date: new Date().toISOString().split('T')[0]
+      };
+
+      await this.db.updateUser(user.id, updates);
+
+      // Clear active question
+      await this.db.clearActiveQuestion(user.telegram_id);
+
+      return {
+        success: true,
+        isCorrect,
+        points,
+        correctOption: question.correct_option,
+        responseTime: Math.round(responseTime),
+        user: {
+          ...user,
+          ...updates
+        }
+      };
+    } catch (error) {
+      logger.error('Error processing answer:', error);
       return {
         success: false,
-        error: 'Question not found or expired. Please request a new question.'
+        error: 'Failed to process answer'
       };
     }
-
-    const { question, startTime, attemptNumber } = activeData;
-    const responseTime = (Date.now() - startTime) / 1000; // Convert to seconds
-
-    // Validate timing
-    const timingCheck = EligibilityChecker.validateAnswerTiming(responseTime);
-    if (!timingCheck.valid) {
-      await this.db.clearActiveQuestion(user.telegramId);
-      return { success: false, error: timingCheck.message };
-    }
-
-    // Check if answer is correct
-    const isCorrect = selectedOption.toUpperCase() === question.correctOption.toUpperCase();
-
-    // Calculate points
-    const { total: points, breakdown } = ScoringEngine.calculatePoints(
-      user,
-      question,
-      isCorrect,
-      responseTime,
-      attemptNumber,
-      isPrizeRound
-    );
-
-    // Update user streak
-    const { user: updatedUser, streakBroken } = ScoringEngine.updateStreak(user);
-    
-    // Apply points
-    ScoringEngine.applyPoints(updatedUser, points, isPrizeRound);
-
-    // Update stats
-    updatedUser.totalQuestions += 1;
-    if (isCorrect) {
-      updatedUser.correctAnswers += 1;
-    }
-
-    // Check for suspicious behavior
-    const suspiciousCheck = EligibilityChecker.checkSuspiciousBehavior(updatedUser, responseTime);
-    if (suspiciousCheck.suspicious) {
-      updatedUser.suspiciousFlags += 1;
-      logger.warn(`Suspicious behavior detected for user ${updatedUser.telegramId}`);
-    }
-
-    // Save attempt
-    const attempt = {
-      attemptId: generateId(),
-      telegramId: user.telegramId,
-      questionId,
-      selectedOption,
-      isCorrect,
-      responseTimeSeconds: responseTime,
-      pointsAwarded: points,
-      pointType: isPrizeRound ? 'pp' : 'ap',
-      attemptNumber
-    };
-
-    await this.db.createAttempt(attempt);
-
-    // Update user in database
-    await this.db.updateUser(updatedUser);
-
-    // Update question stats
-    await this.db.updateQuestionStats(questionId, isCorrect);
-
-    // Clear active question
-    await this.db.clearActiveQuestion(user.telegramId);
-
-    // Return result
-    return {
-      success: true,
-      isCorrect,
-      correctOption: question.correctOption,
-      points,
-      breakdown,
-      streakBroken,
-      user: updatedUser
-    };
   }
 
-  /**
-   * Format question text for display
-   */
+  async calculatePoints(user, question, isCorrect, responseTime, isPrizeRound) {
+    try {
+      let basePoints = 5;
+      let ap = 0;
+      let pp = 0;
+      let pointType = 'ap';
+
+      // Base points for correct answer
+      if (isCorrect) {
+        basePoints = isPrizeRound ? 10 : 8;
+        
+        // Ghana question bonus
+        if (this.isGhanaQuestion(question.category)) {
+          basePoints = Math.round(basePoints * 1.2);
+        }
+
+        // Speed bonus
+        if (responseTime < 10) {
+          basePoints = Math.round(basePoints * 1.5);
+        } else if (responseTime < 20) {
+          basePoints = Math.round(basePoints * 1.2);
+        }
+
+        // Streak bonus
+        if (user.streak >= 7) {
+          basePoints = Math.round(basePoints * 1.1);
+        } else if (user.streak >= 30) {
+          basePoints = Math.round(basePoints * 1.3);
+        }
+
+        // Subscription bonus
+        if (user.subscription_status === 'subscriber') {
+          basePoints = Math.round(basePoints * 1.25);
+        }
+      }
+
+      // Assign points based on game mode
+      if (isPrizeRound) {
+        pp = basePoints;
+        pointType = 'pp';
+      } else {
+        ap = basePoints;
+        pointType = 'ap';
+      }
+
+      return {
+        total: basePoints,
+        ap,
+        pp,
+        type: pointType,
+        breakdown: {
+          base: isCorrect ? (isPrizeRound ? 10 : 8) : 0,
+          speedBonus: responseTime < 10 ? Math.round(basePoints * 0.3) : responseTime < 20 ? Math.round(basePoints * 0.1) : 0,
+          streakBonus: user.streak >= 7 ? Math.round(basePoints * 0.1) : 0,
+          ghanaBonus: this.isGhanaQuestion(question.category) ? Math.round(basePoints * 0.2) : 0,
+          subscriptionBonus: user.subscription_status === 'subscriber' ? Math.round(basePoints * 0.25) : 0
+        }
+      };
+    } catch (error) {
+      logger.error('Error calculating points:', error);
+      return { total: 0, ap: 0, pp: 0, type: 'ap' };
+    }
+  }
+
+  isGhanaQuestion(category) {
+    const ghanaCategories = ['CULTURE', 'SPORTS', 'MUSIC', 'HISTORY', 'POLITICS', 'GEOGRAPHY', 'FOOD', 'ENTERTAINMENT', 'LANGUAGE', 'CURRENT_AFFAIRS'];
+    return ghanaCategories.includes(category);
+  }
+
   formatQuestionText(question, questionNumber) {
-    return `**Question #${questionNumber}**\n\n${question.questionText}\n\n` +
-           `A) ${question.optionA}\n` +
-           `B) ${question.optionB}\n` +
-           `C) ${question.optionC}\n` +
-           `D) ${question.optionD}\n\n` +
-           `⏱️ Time: ${question.timeLimitSeconds}s | Category: ${question.category}`;
+    return `**Question #${questionNumber}**\n\n${question.question_text}\n\n` +
+           `A) ${question.option_a}\n` +
+           `B) ${question.option_b}\n` +
+           `C) ${question.option_c}\n` +
+           `D) ${question.option_d}\n\n` +
+           `⏱️ Time: ${question.time_limit_seconds || 30}s | Category: ${question.category}`;
+  }
+
+  formatBreakdown(breakdown, pointType) {
+    let text = '';
+    
+    if (breakdown.base > 0) {
+      text += `Base: +${breakdown.base} ${pointType.toUpperCase()}\n`;
+    }
+    
+    if (breakdown.speedBonus > 0) {
+      text += `⚡ Speed: +${breakdown.speedBonus}\n`;
+    }
+    
+    if (breakdown.streakBonus > 0) {
+      text += `🔥 Streak: +${breakdown.streakBonus}\n`;
+    }
+    
+    if (breakdown.ghanaBonus > 0) {
+      text += `🇬🇭 Ghana: +${breakdown.ghanaBonus}\n`;
+    }
+    
+    if (breakdown.subscriptionBonus > 0) {
+      text += `💎 Premium: +${breakdown.subscriptionBonus}\n`;
+    }
+    
+    if (breakdown.total) {
+      text += `\n**Total: +${breakdown.total} ${pointType.toUpperCase()}**`;
+    }
+    
+    return text;
   }
 }

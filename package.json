@@ -23,11 +23,13 @@
   "author": "G-NEX Team",
   "license": "MIT",
   "dependencies": {
-    "hono": "^4.0.0"
+    "@supabase/supabase-js": "^2.95.3",
+    "hono": "^4.11.9",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240117.0",
-    "wrangler": "^3.24.0",
-    "vitest": "^1.2.0"
+    "vitest": "^1.2.0",
+    "wrangler": "^4.65.0"
   }
 }

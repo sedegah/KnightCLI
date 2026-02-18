@@ -10,11 +10,11 @@ export function createMainMenuKeyboard() {
   return {
     inline_keyboard: [
       [
-        { text: '🎮 Play Now', callback_data: 'play' },
-        { text: '📊 My Stats', callback_data: 'stats' }
+        { text: '▶️ Play Quiz', callback_data: 'play_continuous' },
+        { text: '� My Stats', callback_data: 'show_stats' }
       ],
       [
-        { text: '🏆 Leaderboard', callback_data: 'leaderboard' },
+        { text: '🏆 Leaderboard', callback_data: 'show_leaderboard' },
         { text: '❓ Help', callback_data: 'help' }
       ]
     ]
@@ -28,12 +28,12 @@ export function createQuestionKeyboard(questionId) {
   return {
     inline_keyboard: [
       [
-        { text: 'A', callback_data: `answer_${questionId}_A` },
-        { text: 'B', callback_data: `answer_${questionId}_B` }
+        { text: 'A', callback_data: `answer_A_${questionId}` },
+        { text: 'B', callback_data: `answer_B_${questionId}` }
       ],
       [
-        { text: 'C', callback_data: `answer_${questionId}_C` },
-        { text: 'D', callback_data: `answer_${questionId}_D` }
+        { text: 'C', callback_data: `answer_C_${questionId}` },
+        { text: 'D', callback_data: `answer_D_${questionId}` }
       ]
     ]
   };
