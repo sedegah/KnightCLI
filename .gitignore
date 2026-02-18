@@ -2,6 +2,9 @@
 .env
 *.env
 
+node_modules/
+.wrangler/
+
 # Google Credentials
 credentials.json
 token.json
@@ -52,3 +55,67 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# G-NEX Bot Sensitive Files
+wrangler.toml
+.env.local
+.env.development
+.env.production
+secrets.json
+config/secrets.json
+src/config/secrets.js
+src/utils/secrets.js
+
+# Telegram Bot Tokens
+*TELEGRAM_BOT_TOKEN*
+*BOT_TOKEN*
+*WEBHOOK_SECRET*
+
+# Cloudflare Workers
+*.wrangler
+.wrangler/
+dist/
+worker.js
+
+# Test Files
+test-*.js
+check-tables.js
+test-kv-bot.js
+test-gnex-db.js
+test-all-callbacks.js
+load-ghana-questions.js
+
+# Temporary Files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Backup Files
+*.bak
+*.backup
+backup/
+backups/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+*.p12
+
+# API Keys and Secrets
+api-keys.json
+secrets/
+private/
+*.private
+
+# Deployment Artifacts
+*.zip
+*.tar.gz
+deploy/
+artifacts/
