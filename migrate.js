@@ -1,23 +1,19 @@
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 
-// Replace these with your Supabase credentials
 const SUPABASE_URL = "https://dlevrkcfkzjuaalciblo.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsZXZya2Nma3pqdWFhbGNpYmxvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDU4MDA3MCwiZXhwIjoyMDg2MTU2MDcwfQ.UlhAKJtch5CP5JEuFIT2U-_8DvjwFNngKBiEXcjxzck";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Replace this with your Worker endpoint
 const WORKER_MIGRATE_URL = "https://gnex-telegram-bot-dev.sedegahkimathi.workers.dev/migrate";
 
-// Fetch all users from Supabase
 async function fetchSupabaseData(tableName = "users") {
   const { data, error } = await supabase.from(tableName).select("*");
   if (error) throw error;
   return data;
 }
 
-// Send data to Worker
 async function sendToWorker(data, tableName) {
   const res = await fetch(WORKER_MIGRATE_URL, {
     method: "POST",
