@@ -4,7 +4,7 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sedegah/KnightCLI)
 
-## 🎮 Overview
+## Overview
 
 G-NEX is a production-ready Telegram quiz platform featuring:
 - **Daily Quizzes** with streak tracking and bonus points
@@ -14,16 +14,16 @@ G-NEX is a production-ready Telegram quiz platform featuring:
 - **Partner Mode** for duo gameplay (coming soon)
 - **Global Leaderboards** with weekly rankings
 
-## ✨ Key Features
+## Key Features
 
-- ⚡ **Sub-200ms response times** globally via Cloudflare edge network
-- 🌍 **Serverless architecture** - automatic scaling from 0 to thousands of users
-- 💰 **Free to start** - Generous Cloudflare free tier
-- 🔒 **Secure** - Built-in rate limiting, anti-cheat, and spam protection
-- 📊 **Real-time leaderboards** with D1 database
-- 🎯 **Fair gameplay** - Deterministic scoring and validation
+- **Sub-200ms response times** globally via Cloudflare edge network
+- **Serverless architecture** - automatic scaling from 0 to thousands of users
+- **Free to start** - Generous Cloudflare free tier
+- **Secure** - Built-in rate limiting, anti-cheat, and spam protection
+- **Real-time leaderboards** with D1 database
+- **Fair gameplay** - Deterministic scoring and validation
 
-## 🚀 Quick Start
+## Quick Start
 
 **Full setup guide:** [SETUP.md](SETUP.md)
 
@@ -38,7 +38,7 @@ npx wrangler login
 npx wrangler d1 create gnex-db
 npx wrangler kv:namespace create "GNEX_KV"
 
-# 4. Update wrangler.toml with the IDs from step 3
+# 4. Update wrangler.toml with IDs from step 3
 
 # 5. Initialize database
 npx wrangler d1 execute gnex-db --file=./src/database/schema.sql
@@ -52,7 +52,7 @@ npx wrangler secret put ADMIN_TELEGRAM_IDS
 npm run deploy
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 KnightCLI/
@@ -79,7 +79,8 @@ KnightCLI/
 └── README.md
 ```
 
-## 🎯 How It Works
+
+## How It Works
 
 ### Continuous Play
 - Answer questions anytime to earn **Accumulated Points (AP)**
@@ -103,7 +104,7 @@ KnightCLI/
 - 7 days: +15 points
 - 30 days: +50 points
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 - **Runtime**: Cloudflare Workers (V8 isolates, edge execution)
 - **Framework**: Hono (lightweight, fast web framework)
@@ -111,7 +112,7 @@ KnightCLI/
 - **Cache**: Cloudflare KV (key-value store)
 - **API**: Telegram Bot API (webhook-based)
 
-## 📊 Database Schema
+## Database Schema
 
 **D1 (Relational):**
 - `users` - Player profiles, points, streaks
@@ -128,25 +129,25 @@ KnightCLI/
 - Rate limits (1-hour TTL)
 - Session data
 
-## 🔒 Security Features
+## Security Features
 
-- ✅ Telegram webhook verification
-- ✅ Rate limiting (20-40 requests/hour per user)
-- ✅ Anti-cheat detection (min answer time, accuracy flags)
-- ✅ Admin authentication
-- ✅ Request validation
-- ✅ Abuse prevention
+- Telegram webhook verification
+- Rate limiting (20-40 requests/hour per user)
+- Anti-cheat detection (min answer time, accuracy flags)
+- Admin authentication
+- Request validation
+- Abuse prevention
 
-## 📈 Scalability
+## Scalability
 
 Designed for:
 - **Thousands of concurrent users**
 - **Sub-200ms response times globally**
-- **Automatic scaling** (0 to ∞)
+- **Automatic scaling** (0 to infinity)
 - **Zero-downtime deployments**
 - **Edge execution** in 300+ cities worldwide
 
-## 💰 Cost Estimates
+## Cost Estimates
 
 **Cloudflare Free Tier:**
 - 100k requests/day (Workers)
@@ -157,7 +158,7 @@ Designed for:
 
 **Scaling:** $5/mo Workers Paid = 10M requests/month
 
-## 🎮 Bot Commands
+## Bot Commands
 
 - `/start` - Register and begin
 - `/play` - Answer a question
@@ -165,7 +166,7 @@ Designed for:
 - `/leaderboard` - See top players
 - `/help` - How to play
 
-## 🧪 Development
+## Development
 
 ```bash
 # Run locally
@@ -179,28 +180,28 @@ npm run tail
 npm run deploy
 ```
 
-## 🚧 Roadmap
+## Roadmap
 
-### ✅ Phase 1 (Complete)
+### Phase 1 (Complete)
 - Core quiz gameplay
 - Streak system
 - Leaderboards
 - Rate limiting
 - Anti-cheat basics
 
-### 🔜 Phase 2 (Q2 2026)
+### Phase 2 (Q2 2026)
 - 1v1 Battle mode
 - Squad competitions
 - Partner/Duo mode
 - Enhanced rewards system
 
-### 🔮 Phase 3 (Q3 2026)
+### Phase 3 (Q3 2026)
 - Tournament system
 - Advanced analytics
 - Multi-language support
 - Mobile data rewards (Ghana)
 
-## 📝 Deployment Options
+## Deployment Options
 
 ### Cloudflare Workers (Recommended)
 ```bash
@@ -215,7 +216,7 @@ routes = [
 ]
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing`)
@@ -223,24 +224,24 @@ routes = [
 4. Push to branch (`git push origin feature/amazing`)
 5. Open a Pull Request
 
-## 📖 Documentation
+## Documentation
 
 - **Setup Guide**: [SETUP.md](SETUP.md)
 - **Python Reference**: [python/README-python.md](python/README-python.md)
 - **Cloudflare Docs**: https://developers.cloudflare.com/workers
 - **Telegram Bot API**: https://core.telegram.org/bots/api
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file
 
-## 💬 Support
+## Support
 
 - **Issues**: [GitHub Issues](https://github.com/sedegah/KnightCLI/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/sedegah/KnightCLI/discussions)
 - **Email**: support@gnex-quiz.com
 
-## 🌟 Why Cloudflare Workers?
+## Why Cloudflare Workers?
 
 | Feature | Traditional Server | Cloudflare Workers |
 |---------|-------------------|-------------------|
@@ -250,7 +251,7 @@ MIT License - see [LICENSE](LICENSE) file
 | Cost (1k users) | $10-50/mo | FREE |
 | Maintenance | High | Zero |
 
-## 🎓 Migration from Python
+## Migration from Python
 
 The original Python implementation is preserved in `/python` for reference. Key improvements:
 
@@ -263,6 +264,6 @@ See [python/README-python.md](python/README-python.md) for the original implemen
 
 ---
 
-**Built with ❤️ for competitive gaming communities worldwide**
+**Built with passion for competitive gaming communities worldwide**
 
-[⭐ Star this repo](https://github.com/sedegah/KnightCLI) | [🐛 Report Bug](https://github.com/sedegah/KnightCLI/issues) | [✨ Request Feature](https://github.com/sedegah/KnightCLI/issues)
+[Star this repo](https://github.com/sedegah/KnightCLI) | [Report Bug](https://github.com/sedegah/KnightCLI/issues) | [Request Feature](https://github.com/sedegah/KnightCLI/issues)

@@ -119,4 +119,9 @@ private/
 *.tar.gz
 deploy/
 artifacts/
+
+# IDE and Editor Files
+.windsurf/
+.vscode/
+.idea/
 wrangler.toml
