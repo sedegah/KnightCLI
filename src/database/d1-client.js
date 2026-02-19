@@ -16,9 +16,13 @@ export class D1Database {
    */
   async executeQuery(sql, params = []) {
     try {
-      const statement = this.env.D1.prepare(sql);
+      const db = this.env.GNEX_D1;
+      if (!db) {
+        throw new Error('D1 database binding not found. Make sure GNEX_D1 is configured in wrangler.toml');
+      }
+      const statement = db.prepare(sql);
       const result = await statement.bind(...params).all();
-      return result;
+      return result.results || [];
     } catch (error) {
       logger.error('Database query error:', error);
       throw error;
@@ -34,7 +38,7 @@ export class D1Database {
         'SELECT * FROM users WHERE telegram_id = ?',
         [telegramId]
       );
-      return result.length > 0 ? result[0] : null;
+      return result && result.length > 0 ? result[0] : null;
     } catch (error) {
       logger.error('Error getting user:', error);
       return null;
@@ -46,14 +50,15 @@ export class D1Database {
    */
   async createUser(userData) {
     try {
+      const id = randomUUID();
       const result = await this.executeQuery(
-        `INSERT INTO users (telegram_id, username, full_name, ap, pp, weekly_points, total_ap, total_pp, streak, last_played_date, subscription_status, total_questions, correct_answers, referral_code, referred_by, is_banned, suspicious_flags) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO users (id, telegram_id, username, full_name, ap, pp, weekly_points, total_ap, total_pp, streak, last_played_date, subscription_status, total_questions, correct_answers, referral_code, referred_by, is_banned, suspicious_flags) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          crypto.randomUUID(),
+          id,
           userData.telegramId,
           userData.username || `user_${userData.telegramId}`,
-          userData.full_name,
+          userData.full_name || `User ${userData.telegramId}`,
           0, // ap
           0, // pp
           0, // weekly_points
@@ -70,7 +75,8 @@ export class D1Database {
           '[]' // suspicious_flags
         ]
       );
-      return result.length > 0 ? result[0] : null;
+      // Fetch and return the created user
+      return await this.getUser(userData.telegramId);
     } catch (error) {
       logger.error('Error creating user:', error);
       return null;
@@ -132,15 +138,17 @@ export class D1Database {
    */
   async recordAttempt(telegramId, questionId, selectedOption, isCorrect, pointsEarned, speedBonus, streakBonus) {
     try {
+      const id = randomUUID();
       await this.executeQuery(
-        `INSERT INTO user_attempts (telegram_id, question_id, selected_option, is_correct, points_earned, speed_bonus, streak_bonus, attempted_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO user_attempts (id, telegram_id, question_id, selected_option, is_correct, attempt_number, points_earned, speed_bonus, streak_bonus, attempted_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          crypto.randomUUID(),
+          id,
           telegramId,
           questionId,
           selectedOption,
-          isCorrect,
+          isCorrect ? 1 : 0,
+          1, // attempt_number
           pointsEarned,
           speedBonus,
           streakBonus,

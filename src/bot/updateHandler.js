@@ -187,8 +187,8 @@ async function handleStartCommand(message, db, env) {
       env.TELEGRAM_BOT_TOKEN,
       message.chat.id,
       `Welcome back, ${user.full_name}! 👋\n\n` +
-      `Your Points: ${user.ap} AP | ${user.pp} PP\n` +
-      `Streak: ${user.streak} days 🔥\n\n` +
+      `Your Points: ${user.ap || 0} AP | ${user.pp || 0} PP\n` +
+      `Streak: ${user.streak || 0} days 🔥\n\n` +
       `Ready to crush some questions?\n\n*I-Crush by G-NEX*`,
       createMainMenuKeyboard()
     );
