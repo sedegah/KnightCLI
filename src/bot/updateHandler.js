@@ -183,6 +183,7 @@ async function handleStartCommand(message, db, env) {
 
   if (user) {
     // Existing user
+    console.log('Existing user found:', { telegramId, fullName: user.full_name });
     await sendMessageWithKeyboard(
       env.TELEGRAM_BOT_TOKEN,
       message.chat.id,
@@ -197,6 +198,8 @@ async function handleStartCommand(message, db, env) {
     const parts = message.text.split(' ');
     const referralCode = parts.length > 1 ? parts[1] : '';
 
+    console.log('Creating new user:', { telegramId, username, fullName });
+
     // Create new user
     user = await db.createUser({
       telegramId,
@@ -206,6 +209,7 @@ async function handleStartCommand(message, db, env) {
     });
 
     if (!user) {
+      console.error('Failed to create user:', { telegramId });
       await sendMessage(
         env.TELEGRAM_BOT_TOKEN,
         message.chat.id,
@@ -213,6 +217,8 @@ async function handleStartCommand(message, db, env) {
       );
       return;
     }
+
+    console.log('User created successfully:', { telegramId, fullName: user.full_name });
 
     // Send welcome message
     await sendMessageWithKeyboard(

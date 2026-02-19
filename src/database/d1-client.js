@@ -21,10 +21,20 @@ export class D1Database {
         throw new Error('D1 database binding not found. Make sure GNEX_D1 is configured in wrangler.toml');
       }
       const statement = db.prepare(sql);
-      const result = await statement.bind(...params).all();
-      return result.results || [];
+      const boundStatement = statement.bind(...params);
+      const result = await boundStatement.all();
+      
+      // D1 returns { success, results, meta }
+      // We need the results array
+      if (result && Array.isArray(result)) {
+        return result;
+      }
+      if (result && Array.isArray(result.results)) {
+        return result.results;
+      }
+      return [];
     } catch (error) {
-      logger.error('Database query error:', error);
+      logger.error('Database query error:', { sql, params, error: error.message });
       throw error;
     }
   }
