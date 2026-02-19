@@ -63,6 +63,14 @@ async function handleMessage(message, db, questionManager, env) {
     await handleInviteCommand(message, env);
   } else if (text === '/subscribe') {
     await handleSubscribeCommand(message, env);
+  } else if (text === '/arena') {
+    await handleArenaCommand(message, env);
+  } else if (text === '/rewards') {
+    await handleRewardsCommand(message, env);
+  } else if (text === '/streak') {
+    await handleStreakCommand(message, env);
+  } else if (text === '/referral') {
+    await handleReferralCommand(message, env);
   } else if (text === '▶️ Play Quiz') {
     await handlePlayCommand(message, db, questionManager, env);
   } else if (text === '👤 My Stats') {

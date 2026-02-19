@@ -10,15 +10,21 @@
 
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
+import dotenv from 'dotenv';
 
-// UPDATE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
-const SUPABASE_URL = 'https://your-project-ref.supabase.co';
-const SUPABASE_ANON_KEY = 'your-anon-key';
+// Load environment variables
+dotenv.config();
 
-// OR use service role key for full access
-const SUPABASE_SERVICE_KEY = 'your-service-role-key';
+// Get Supabase credentials from environment
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY);
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('❌ Missing SUPABASE_URL or SUPABASE_KEY in .env file');
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function exportUsers() {
   console.log('📥 Exporting users...');
@@ -77,7 +83,14 @@ async function exportQuestions() {
     sql += 'INSERT OR REPLACE INTO questions (id, question, option_a, option_b, option_c, option_d, correct, category, difficulty, points, is_active, created_at, updated_at) VALUES\n';
     
     const values = data.map(q => {
-      return `  ('${q.id}', '${q.question.replace(/'/g, "''")}', '${q.option_a.replace(/'/g, "''")}', '${q.option_b.replace(/'/g, "''")}', '${q.option_c.replace(/'/g, "''")}', '${q.option_d.replace(/'/g, "''")}', ${q.correct}, '${q.category}', '${q.difficulty}', ${q.points}, ${q.is_active ? 'TRUE' : 'FALSE'}, '${q.created_at || ''}', '${q.updated_at || ''}')`;
+      // Handle null/undefined values
+      const question = (q.question || '').replace(/'/g, "''");
+      const optionA = (q.option_a || q.optionA || '').replace(/'/g, "''");
+      const optionB = (q.option_b || q.optionB || '').replace(/'/g, "''");
+      const optionC = (q.option_c || q.optionC || '').replace(/'/g, "''");
+      const optionD = (q.option_d || q.optionD || '').replace(/'/g, "''");
+      
+      return `  ('${q.id}', '${question}', '${optionA}', '${optionB}', '${optionC}', '${optionD}', ${q.correct || q.answer || 0}, '${q.category || 'general'}', '${q.difficulty || 'medium'}', ${q.points || 10}, ${q.is_active !== false ? 'TRUE' : 'FALSE'}, '${q.created_at || ''}', '${q.updated_at || ''}')`;
     });
     
     sql += values.join(',\n') + ';\n\n';
@@ -94,10 +107,22 @@ async function exportAttempts() {
   console.log('📥 Exporting user attempts...');
   
   try {
-    const { data, error } = await supabase
-      .from('user_attempts')
+    // Try different table names
+    let { data, error } = await supabase
+      .from('attempts')
       .select('*')
-      .limit(1000); // Limit to prevent huge exports
+      .limit(1000);
+    
+    // If that fails, try user_attempts
+    if (error && error.code === 'PGRST205') {
+      console.log('  Trying "user_attempts" table...');
+      const result = await supabase
+        .from('user_attempts')
+        .select('*')
+        .limit(1000);
+      data = result.data;
+      error = result.error;
+    }
     
     if (error) {
       console.error('❌ Error:', error);
@@ -113,7 +138,7 @@ async function exportAttempts() {
     sql += 'INSERT OR REPLACE INTO user_attempts (id, telegram_id, question_id, selected_option, is_correct, attempt_number, points_earned, speed_bonus, streak_bonus, attempted_at) VALUES\n';
     
     const values = data.map(attempt => {
-      return `  ('${attempt.id}', ${attempt.telegram_id}, '${attempt.question_id}', '${attempt.selected_option}', ${attempt.is_correct ? 'TRUE' : 'FALSE'}, ${attempt.attempt_number}, ${attempt.points_earned || 0}, ${attempt.speed_bonus || 0}, ${attempt.streak_bonus || 0}, '${attempt.attempted_at || ''}')`;
+      return `  ('${attempt.id}', ${attempt.telegram_id}, '${attempt.question_id}', '${attempt.selected_option}', ${attempt.is_correct ? 'TRUE' : 'FALSE'}, ${attempt.attempt_number || 1}, ${attempt.points_earned || 0}, ${attempt.speed_bonus || 0}, ${attempt.streak_bonus || 0}, '${attempt.attempted_at || ''}')`;
     });
     
     sql += values.join(',\n') + ';\n\n';
