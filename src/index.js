@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import { handleTelegramUpdate } from './bot/updateHandler.js';
 import { verifyTelegramRequest } from './utils/security.js';
 import { D1Database } from './database/d1-client.js';
+import { PrizeRoundManager } from './prize-rounds/prizeRoundManager.js';
 import { logger } from './utils/logger.js';
 
 const app = new Hono();
@@ -303,4 +304,22 @@ app.notFound((c) => {
 
 export default {
   fetch: app.fetch,
+  async scheduled(event, env, ctx) {
+    try {
+      const db = new D1Database(env);
+      const prizeManager = new PrizeRoundManager(db, env.TELEGRAM_BOT_TOKEN);
+      const scheduledTime = event?.scheduledTime ? new Date(event.scheduledTime) : new Date();
+      const hour = scheduledTime.getUTCHours();
+
+      if (hour === 9) {
+        ctx.waitUntil(prizeManager.runMorningRound());
+      } else if (hour === 21) {
+        ctx.waitUntil(prizeManager.runEveningRound());
+      } else {
+        logger.info(`No prize round scheduled for hour ${hour} UTC`);
+      }
+    } catch (error) {
+      logger.error('Prize round cron failed:', error);
+    }
+  }
 };

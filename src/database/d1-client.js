@@ -118,7 +118,11 @@ export class D1Database {
   async getRandomQuestion() {
     try {
       const result = await this.executeQuery(
-        'SELECT * FROM questions WHERE is_active = TRUE ORDER BY RANDOM() LIMIT 1'
+        `SELECT * FROM questions
+         WHERE is_active = 1
+         AND question IS NOT NULL
+         AND TRIM(question) <> ''
+         ORDER BY RANDOM() LIMIT 1`
       );
       return result.length > 0 ? result[0] : null;
     } catch (error) {
@@ -243,4 +247,133 @@ export class D1Database {
       return null;
     }
   }
-}
+
+  /**
+   * Cache rate limit (simplified - no actual rate limiting for now)
+   */
+  async cacheRateLimit(telegramId, action) {
+    return 0; // No rate limiting for MVP
+  }
+
+  /**
+   * Get active question for user
+   */
+  async getActiveQuestion(telegramId) {
+    try {
+      const result = await this.executeQuery(
+        'SELECT * FROM active_questions WHERE telegram_id = ? LIMIT 1',
+        [telegramId]
+      );
+      if (!result || result.length === 0) {
+        return null;
+      }
+
+      const row = result[0];
+      const question = await this.getQuestion(row.question_id);
+      if (!question) {
+        return null;
+      }
+
+      const cachedAt = row.start_time ? Date.parse(row.start_time) : Date.now();
+      return {
+        question,
+        cachedAt,
+        startTime: cachedAt,
+        attemptNumber: row.attempt_number || 1,
+        isPrizeRound: !!row.is_prize_round
+      };
+    } catch (error) {
+      logger.error('Error getting active question:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cache active question for user
+   */
+  async cacheActiveQuestion(telegramId, data) {
+    try {
+      const id = randomUUID();
+      const startTime = data.startTime ? new Date(data.startTime).toISOString() : new Date().toISOString();
+      await this.executeQuery(
+        `INSERT OR REPLACE INTO active_questions (id, telegram_id, question_id, start_time, attempt_number, is_prize_round)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          telegramId,
+          data.question.id,
+          startTime,
+          data.attemptNumber || 1,
+          data.isPrizeRound ? 1 : 0
+        ]
+      );
+      return true;
+    } catch (error) {
+      logger.error('Error caching active question:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Create attempt record
+   */
+  async createAttempt(data) {
+    try {
+      const id = randomUUID();
+      await this.executeQuery(
+        `INSERT INTO user_attempts (id, telegram_id, question_id, selected_option, is_correct, attempt_number, points_earned, speed_bonus, streak_bonus, attempted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          data.telegramId,
+          data.questionId,
+          data.selectedOption,
+          data.isCorrect ? 1 : 0,
+          data.attemptNumber || 1,
+          data.pointsEarned || 0,
+          data.speedBonus || 0,
+          data.streakBonus || 0,
+          new Date().toISOString()
+        ]
+      );
+      return true;
+    } catch (error) {
+      logger.error('Error creating attempt:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Update question statistics
+   */
+  async updateQuestionStats(questionId, isCorrect) {
+    try {
+      await this.executeQuery(
+        `UPDATE questions 
+         SET times_asked = times_asked + 1,
+             times_correct = times_correct + ${isCorrect ? 1 : 0}
+         WHERE id = ?`,
+        [questionId]
+      );
+      return true;
+    } catch (error) {
+      logger.error('Error updating question stats:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear active question for user
+   */
+  async clearActiveQuestion(telegramId) {
+    try {
+      await this.executeQuery(
+        'DELETE FROM active_questions WHERE telegram_id = ?',
+        [telegramId]
+      );
+      return true;
+    } catch (error) {
+      logger.error('Error clearing active question:', error);
+      return false;
+    }
+  }}

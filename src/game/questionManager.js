@@ -76,20 +76,16 @@ export class QuestionManager {
         };
       }
 
-      // Get active question data
+      // Get active question data (optional)
       const activeData = await this.db.getActiveQuestion(user.telegram_id);
-      if (!activeData || activeData.question.id !== question.id) {
-        return {
-          success: false,
-          error: 'No active question found'
-        };
-      }
+      const hasActiveQuestion = !!(activeData && activeData.question && activeData.question.id === question.id);
 
       // Calculate response time
-      const responseTime = (Date.now() - activeData.startTime) / 1000;
+      const responseTime = activeData?.startTime ? (Date.now() - activeData.startTime) / 1000 : 0;
 
-      // Check if correct
-      const isCorrect = selectedOption.toUpperCase() === question.correct_option.toUpperCase();
+      // Check if correct - correct is 0-3 index, map to A-D
+      const correctLetter = String.fromCharCode(65 + question.correct); // 0=>A, 1=>B, 2=>C, 3=>D
+      const isCorrect = selectedOption.toUpperCase() === correctLetter.toUpperCase();
 
       // Calculate points
       const points = await this.calculatePoints(user, question, isCorrect, responseTime, isPrizeRound);
@@ -97,17 +93,17 @@ export class QuestionManager {
       // Create attempt record
       await this.db.createAttempt({
         telegramId: user.telegram_id,
-        questionId: question.question_id || question.id,
+        questionId: question.id,
         selectedOption,
         isCorrect,
         responseTimeSeconds: Math.round(responseTime),
         pointsAwarded: points.total,
         pointType: points.type,
-        attemptNumber: activeData.attemptNumber
+        attemptNumber: hasActiveQuestion ? activeData.attemptNumber : 1
       });
 
       // Update question stats
-      await this.db.updateQuestionStats(question.id, isCorrect, responseTime);
+      await this.db.updateQuestionStats(question.id, isCorrect);
 
       // Update user stats
       const updates = {
@@ -119,16 +115,18 @@ export class QuestionManager {
         last_played_date: new Date().toISOString().split('T')[0]
       };
 
-      await this.db.updateUser(user.id, updates);
+      await this.db.updateUser(user.telegram_id, updates);
 
       // Clear active question
-      await this.db.clearActiveQuestion(user.telegram_id);
+      if (hasActiveQuestion) {
+        await this.db.clearActiveQuestion(user.telegram_id);
+      }
 
       return {
         success: true,
         isCorrect,
         points,
-        correctOption: question.correct_option,
+        correctOption: String.fromCharCode(65 + question.correct),
         responseTime: Math.round(responseTime),
         user: {
           ...user,
@@ -214,12 +212,13 @@ export class QuestionManager {
   }
 
   formatQuestionText(question, questionNumber) {
-    return `**Question #${questionNumber}**\n\n${question.question_text}\n\n` +
+    const questionText = question.question || 'What is your answer?';
+    return `**Question #${questionNumber}**\n\n${questionText}\n\n` +
            `A) ${question.option_a}\n` +
            `B) ${question.option_b}\n` +
            `C) ${question.option_c}\n` +
            `D) ${question.option_d}\n\n` +
-           `⏱️ Time: ${question.time_limit_seconds || 30}s | Category: ${question.category}`;
+           `⏱️ Time: 30s | Category: ${question.category || 'General'}`;
   }
 
   formatBreakdown(breakdown, pointType) {

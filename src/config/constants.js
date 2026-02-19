@@ -27,8 +27,8 @@ Test your knowledge and win prizes!
   stats_template: `📊 **Your Stats**
 
 **Points**
-• AP: {ap} (Total: {totalAp})
-• PP: {pp}
+• Arena Points: {ap} (Total: {totalAp})
+• Prize Points: {pp}
 • Weekly: {weeklyPoints}
 
 **Performance**
@@ -79,7 +79,7 @@ Start referring and earning today! 🚀`,
 
 Prize Round is now live for {duration} minutes!
 
-• Earn Prize Points (PP)
+• Earn Prize Points
 • Speed bonuses active
 • Win real rewards
 
@@ -121,29 +121,57 @@ Don't worry! Start a new streak by playing today!`,
 
 Keep playing to climb the rankings!`,
 
-  help: `📚 **Quiz Bot Help**
+  help: `🇬🇭 *G-NEX: Ghana's Competitive Data Quiz Arena*
+Test Your Knowledge, Win Free Data, Dominate the Leaderboard!
 
-**Commands:**
-/start - Register and begin
-/play - Answer a question
-/stats - View your statistics
-/leaderboard - See top players
+🎮 *Game Features*
+🏟️ Multiple Game Modes: 1v1 Challenges, Partner Mode, Squad Battles
+🏆 Competitive Rankings: Bronze → Silver → Gold → Diamond → Elite
+🔥 Streak Rewards: Build daily streaks for bonus points and data
+💰 Points Economy: Earn and spend points on premium features
+🎁 Data Rewards: Win free mobile data (MTN, Vodafone, AirtelTigo, GLO)
+🇬🇭 Ghana-Focused: Local culture, sports, music, and current affairs
+
+📱 *Platform*
+Telegram Bot • No downloads • Instant play
+
+🎯 *Focus*
+Ghana Market • Local content • Free data prizes
+
+⚡ *Technology*
+Cloudflare Workers • Global edge • High performance
+
+*Commands:*
+/start - Register and begin your journey
+/play - Answer a question and earn points
+/arena - Challenge another player
+/rewards - Claim your data rewards
+/streak - Check your daily streak
+/referral - Invite friends and earn bonuses
+/stats - View your personal statistics
+/leaderboard - See top players globally
 /help - Show this help message
 
-**How to Play:**
+*How to Play:*
 1. Tap "▶️ Play Quiz" to get a question
 2. Select your answer (A, B, C, or D)
 3. Earn points for correct answers
 4. Build your streak by playing daily
-5. Compete for top spots on leaderboard
+5. Compete for top spots on the leaderboard
+6. Win free mobile data weekly!
 
-**Prize Rounds:**
+*Prize Rounds:*
 • 9:00 AM UTC - Morning Round
 • 9:00 PM UTC - Evening Round
-
 Top players win prizes! 🏆
 
-**Need Support?**
+🚀 *Ready to Play?*
+Start Playing on Telegram
+
+*Bot Status:* ✅ Live and Running
+Powered by Cloudflare Workers • Made with ❤️ for Ghana 🇬🇭
+
+*Need Support?*
 Contact @admin for help.`,
 
   subscribe_prompt: `💎 **Upgrade to Premium**

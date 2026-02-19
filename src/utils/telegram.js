@@ -149,3 +149,31 @@ export async function answerCallbackQuery(botToken, callbackQueryId, text = '', 
     return null;
   }
 }
+
+/**
+ * Set bot commands (interface menu)
+ */
+export async function setMyCommands(botToken, commands) {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commands
+      })
+    });
+
+    const result = await response.json();
+    
+    if (!result.ok) {
+      logger.error('Error setting bot commands:', result);
+    } else {
+      logger.info('Bot commands registered successfully');
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Error setting bot commands:', error);
+    return null;
+  }
+}

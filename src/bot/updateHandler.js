@@ -68,9 +68,19 @@ async function handleMessage(message, db, questionManager, env) {
   } else if (text === '/rewards') {
     await handleRewardsCommand(message, env);
   } else if (text === '/streak') {
-    await handleStreakCommand(message, env);
+    await handleStreakCommand(message, db, env);
   } else if (text === '/referral') {
-    await handleReferralCommand(message, env);
+    await handleReferralCommand(message, db, env);
+  } else if (text === '/challenge') {
+    await handleChallengeCommand(message, db, env);
+  } else if (text === '/partner') {
+    await handlePartnerCommand(message, env);
+  } else if (text === '/squad') {
+    await handleSquadCommand(message, env);
+  } else if (text === '/wallet') {
+    await handleWalletCommand(message, db, env);
+  } else if (text === '/share') {
+    await handleShareCommand(message, db, env);
   } else if (text === '▶️ Play Quiz') {
     await handlePlayCommand(message, db, questionManager, env);
   } else if (text === '👤 My Stats') {
@@ -92,7 +102,7 @@ async function handleMessage(message, db, questionManager, env) {
  */
 async function handleCallbackQuery(query, db, questionManager, env) {
   const telegramId = query.from.id;
-  const data = query.callback_data || '';
+  const data = query.data || query.callback_data || '';
 
   // Log callback for debugging
   console.log('Callback received:', { telegramId, data, queryId: query.id });
@@ -110,10 +120,12 @@ async function handleCallbackQuery(query, db, questionManager, env) {
     }
 
     // Create a message-like object from the callback query
+    const callbackChatId = query.message?.chat?.id || query.from?.id;
+    const callbackMessageId = query.message?.message_id;
     const callbackMessage = {
-      chat: { id: query.message.chat.id },
+      chat: { id: callbackChatId },
       from: query.from,
-      message_id: query.message.message_id
+      message_id: callbackMessageId
     };
 
     console.log('Routing callback:', data);
@@ -125,7 +137,7 @@ async function handleCallbackQuery(query, db, questionManager, env) {
       await handleStatsCallback(callbackMessage, db, env);
     } else if (data === 'show_leaderboard') {
       await handleLeaderboardCallback(callbackMessage, db, env);
-    } else if (data.startsWith('answer_')) {
+    } else if (data.startsWith('answer_') || ['A', 'B', 'C', 'D'].includes(data)) {
       await handleAnswerCallback(query, data, db, questionManager, env);
     } else if (data === 'arena_1v1') {
       await handleArena1v1Callback(callbackMessage, env);
@@ -150,15 +162,27 @@ async function handleCallbackQuery(query, db, questionManager, env) {
     } else if (data === 'subscribe') {
       await handleSubscribeCallback(callbackMessage, env);
     } else if (data === 'wallet') {
-      await handleWalletCallback(callbackMessage, env);
+      await handleWalletCallback(callbackMessage, db, env);
     } else if (data === 'rewards') {
       await handleRewardsCallback(callbackMessage, env);
     } else if (data === 'streak') {
-      await handleStreakCallback(callbackMessage, env);
+      await handleStreakCallback(callbackMessage, db, env);
     } else if (data === 'referral') {
-      await handleReferralCallback(callbackMessage, env);
+      await handleReferralCallback(callbackMessage, db, env);
     } else if (data === 'arena') {
       await handleArenaCallback(callbackMessage, env);
+    } else if (data === 'start_1v1') {
+      await handleStart1v1Callback(callbackMessage, env);
+    } else if (data === 'view_rankings') {
+      await handleViewRankingsCallback(callbackMessage, db, env);
+    } else if (data === 'find_partner') {
+      await handleFindPartnerCallback(callbackMessage, env);
+    } else if (data === 'create_partnership') {
+      await handleCreatePartnershipCallback(callbackMessage, env);
+    } else if (data === 'find_squad') {
+      await handleFindSquadCallback(callbackMessage, env);
+    } else if (data === 'create_squad') {
+      await handleCreateSquadCallback(callbackMessage, env);
     } else {
       // Handle unknown callback data
       console.warn('Unknown callback data:', data);
@@ -166,7 +190,16 @@ async function handleCallbackQuery(query, db, questionManager, env) {
     }
   } catch (error) {
     console.error('Error handling callback:', error);
-    await sendMessage(env.TELEGRAM_BOT_TOKEN, query.message.chat.id, '❌ Error processing button');
+    console.error('Callback payload:', {
+      data,
+      hasMessage: !!query.message,
+      chatId: query.message?.chat?.id,
+      messageId: query.message?.message_id
+    });
+    const chatId = query.message?.chat?.id || query.from?.id;
+    if (chatId) {
+      await sendMessage(env.TELEGRAM_BOT_TOKEN, chatId, '❌ Error processing button');
+    }
   }
 }
 
@@ -262,12 +295,12 @@ async function handlePlayCommand(message, db, questionManager, env) {
   }
 
   // Send question
-  const questionText = questionManager.formatQuestionText(question, user.totalQuestions + 1);
+  const questionText = questionManager.formatQuestionText(question, (user.total_questions || 0) + 1);
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
     questionText,
-    createQuestionKeyboard(question.questionId)
+    createQuestionKeyboard(question.id)
   );
 }
 
@@ -301,13 +334,13 @@ async function handlePlayCallback(query, db, questionManager, env) {
     return;
   }
 
-  const questionText = questionManager.formatQuestionText(question, user.totalQuestions + 1);
+  const questionText = questionManager.formatQuestionText(question, (user.total_questions || 0) + 1);
   await editMessageText(
     env.TELEGRAM_BOT_TOKEN,
     query.chat.id,
     query.message_id,
     questionText,
-    createQuestionKeyboard(question.questionId)
+    createQuestionKeyboard(question.id)
   );
 }
 
@@ -322,24 +355,46 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
     return;
   }
 
-  // Parse answer: "answer_<option>_<questionId>" (Python format)
-  const parts = data.split('_');
-  if (parts.length < 3) {
+  const parsed = parseAnswerData(data);
+  if (!parsed) {
     console.error('Invalid answer format:', data);
     return;
   }
-  
-  const selectedOption = parts[1]; // A, B, C, or D
-  const questionId = parts.slice(2).join('_'); // Handle question IDs with underscores
+
+  const selectedOption = parsed.selectedOption;
+  let questionId = parsed.questionId;
+
+  if (!questionId) {
+    const activeData = await db.getActiveQuestion(user.telegram_id);
+    if (!activeData || !activeData.question || !activeData.question.id) {
+      const chatId = query.message?.chat?.id || query.chat?.id || query.from?.id;
+      const messageId = query.message?.message_id || query.message_id;
+      if (chatId && messageId) {
+        await editMessageText(
+          env.TELEGRAM_BOT_TOKEN,
+          chatId,
+          messageId,
+          'No active question found. Please tap ▶️ Play Quiz again.'
+        );
+      }
+      return;
+    }
+    questionId = activeData.question.id;
+  }
 
   // Process answer
   const result = await questionManager.processAnswer(user, questionId, selectedOption, false);
 
   if (!result.success) {
+    const chatId = query.message?.chat?.id || query.chat?.id || query.from?.id;
+    const messageId = query.message?.message_id || query.message_id;
+    if (!chatId || !messageId) {
+      return;
+    }
     await editMessageText(
       env.TELEGRAM_BOT_TOKEN,
-      query.chat.id,
-      query.message_id,
+      chatId,
+      messageId,
       result.error
     );
     return;
@@ -349,12 +404,16 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
   let responseText = '';
 
   if (result.isCorrect) {
-    const pointType = 'AP';
-    const breakdown = questionManager.formatBreakdown || 
-                     `Base: +${result.breakdown.base} ${pointType}\n` +
-                     `${result.breakdown.speedBonus > 0 ? `⚡ Speed: +${result.breakdown.speedBonus}\n` : ''}` +
-                     `${result.breakdown.streakBonus > 0 ? `🔥 Streak: +${result.breakdown.streakBonus}\n` : ''}` +
-                     `\n**Total: +${result.breakdown.total} ${pointType}**`;
+    const pointType = 'Arena Points';
+    const breakdownData = result.points?.breakdown;
+    const breakdown = breakdownData && typeof questionManager.formatBreakdown === 'function'
+      ? questionManager.formatBreakdown(breakdownData, pointType)
+      : breakdownData
+        ? `Base: +${breakdownData.base} ${pointType}\n` +
+          `${breakdownData.speedBonus > 0 ? `⚡ Speed: +${breakdownData.speedBonus}\n` : ''}` +
+          `${breakdownData.streakBonus > 0 ? `🔥 Streak: +${breakdownData.streakBonus}\n` : ''}` +
+          `\n**Total: +${breakdownData.total} ${pointType}**`
+        : `**Total: +${result.points?.total || 0} ${pointType}**`;
 
     responseText = `✅ **Correct!**\n\n${breakdown}`;
   } else {
@@ -367,11 +426,39 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
 
   await editMessageText(
     env.TELEGRAM_BOT_TOKEN,
-    query.chat.id,
-    query.message_id,
-    responseText,
-    createMainMenuKeyboard()
+    query.message?.chat?.id || query.chat?.id || query.from?.id,
+    query.message?.message_id || query.message_id,
+    responseText
   );
+
+  const menuChatId = query.message?.chat?.id || query.chat?.id || query.from?.id;
+  if (menuChatId) {
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      menuChatId,
+      'Choose your next action:',
+      createMainMenuKeyboard()
+    );
+  }
+}
+
+function parseAnswerData(data) {
+  if (['A', 'B', 'C', 'D'].includes(data)) {
+    return { selectedOption: data, questionId: null };
+  }
+
+  if (!data.startsWith('answer_')) {
+    return null;
+  }
+
+  const parts = data.split('_');
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const selectedOption = parts[1];
+  const questionId = parts.length >= 3 ? parts.slice(2).join('_') : null;
+  return { selectedOption, questionId };
 }
 
 /**
@@ -387,19 +474,21 @@ async function handleStatsCommand(message, db, env) {
   }
 
   const rank = await db.getUserRank(telegramId);
-  const accuracy = user.totalQuestions > 0 
-    ? ((user.correctAnswers / user.totalQuestions) * 100).toFixed(1) 
+  const totalQuestions = user.total_questions || 0;
+  const correctAnswers = user.correct_answers || 0;
+  const accuracy = totalQuestions > 0 
+    ? ((correctAnswers / totalQuestions) * 100).toFixed(1) 
     : 0;
-  const userType = user.subscriptionStatus === 'subscriber' ? '💎 Premium' : 'Free';
+  const userType = user.subscription_status === 'subscriber' ? '💎 Premium' : 'Free';
 
   const statsText = MESSAGES.stats_template
-    .replace('{ap}', user.ap.toLocaleString())
-    .replace('{totalAp}', user.totalAp.toLocaleString())
-    .replace('{pp}', user.pp.toLocaleString())
-    .replace('{weeklyPoints}', user.weeklyPoints.toLocaleString())
-    .replace('{streak}', user.streak)
-    .replace('{totalQuestions}', user.totalQuestions)
-    .replace('{correctAnswers}', user.correctAnswers)
+    .replace('{ap}', (user.ap || 0).toLocaleString())
+    .replace('{totalAp}', (user.total_ap || 0).toLocaleString())
+    .replace('{pp}', (user.pp || 0).toLocaleString())
+    .replace('{weeklyPoints}', (user.weekly_points || 0).toLocaleString())
+    .replace('{streak}', user.streak || 0)
+    .replace('{totalQuestions}', totalQuestions)
+    .replace('{correctAnswers}', correctAnswers)
     .replace('{accuracy}', accuracy)
     .replace('{userType}', userType)
     .replace('{rank}', rank);
@@ -426,7 +515,7 @@ async function handleLeaderboardCommand(message, db, env) {
 
   topUsers.forEach((user, index) => {
     const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-    leaderboardText += `${medal} **${user.full_name}** - ${user.weekly_points.toLocaleString()} pts\n`;
+    leaderboardText += `${medal} **${user.full_name}** - ${(user.weekly_points || 0).toLocaleString()} pts\n`;
   });
 
   await sendMessageWithKeyboard(env.TELEGRAM_BOT_TOKEN, message.chat.id, leaderboardText, createMainMenuKeyboard());
@@ -484,12 +573,9 @@ async function handleArenaCommand(message, env) {
   );
 }
 
-async function handleChallengeCommand(message, env) {
-  await sendMessage(
-    env.TELEGRAM_BOT_TOKEN,
-    message.chat.id,
-    '⚔️ **Challenge Mode**\n\nUse /arena to access 1v1 challenges and battle other players!\n\nChallenge types:\n• Standard Battle\n• Speed Challenge\n• Streak Challenge'
-  );
+async function handleChallengeCommand(message, db, env) {
+  // Redirect to arena 1v1 interface
+  await handleArena1v1Callback(message, env);
 }
 
 async function handlePartnerCommand(message, env) {
@@ -516,36 +602,24 @@ async function handleRewardsCommand(message, env) {
   );
 }
 
-async function handleWalletCommand(message, env) {
-  await sendMessage(
-    env.TELEGRAM_BOT_TOKEN,
-    message.chat.id,
-    '💰 **Points Wallet**\n\nEarn and spend points!\n\nEarn points by:\n• Answering questions\n• Daily login bonus\n• Winning battles\n• Referring friends\n\nSpend points on:\n• Premium battles\n• Mystery boxes\n• Streak protection\n• Squad boosts'
-  );
+async function handleWalletCommand(message, db, env) {
+  // Reuse the callback handler which already has the full implementation
+  await handleWalletCallback(message, db, env);
 }
 
-async function handleStreakCommand(message, env) {
-  await sendMessage(
-    env.TELEGRAM_BOT_TOKEN,
-    message.chat.id,
-    '🔥 **Streak Rewards**\n\nBuild daily streaks for amazing rewards!\n\nMilestones:\n• 3 days: +50 points\n• 7 days: Data draw entry\n• 14 days: 1.2x multiplier\n• 30 days: Guaranteed 100MB data\n\nProtect your streak with points!'
-  );
+async function handleStreakCommand(message, db, env) {
+  // Reuse the callback handler which already has the full implementation
+  await handleStreakCallback(message, db, env);
 }
 
-async function handleReferralCommand(message, env) {
-  await sendMessage(
-    env.TELEGRAM_BOT_TOKEN,
-    message.chat.id,
-    '🤝 **Referral System**\n\nInvite friends and earn rewards!\n\nYou get:\n• 50 points + 50MB data per referral\n• Bonus rewards at 5, 10, 20 referrals\n\nYour friend gets:\n• 25 points + 25MB data bonus\n\nUse /share to get your referral link!'
-  );
+async function handleReferralCommand(message, db, env) {
+  // Reuse the callback handler which already has the full implementation
+  await handleReferralCallback(message, db, env);
 }
 
-async function handleShareCommand(message, env) {
-  await sendMessage(
-    env.TELEGRAM_BOT_TOKEN,
-    message.chat.id,
-    '📤 **Share Your Success**\n\nCreate shareable cards for:\n• Rank achievements\n• Streak milestones\n• Squad victories\n• Battle wins\n\nShare your progress and invite friends to compete!'
-  );
+async function handleShareCommand(message, db, env) {
+  // Reuse referral callback for sharing referral link
+  await handleReferralCallback(message, db, env);
 }
 
 async function handleInviteCommand(message, env) {
@@ -639,6 +713,50 @@ async function handleArenaRankingsCallback(message, env) {
         ]
       ]
     }
+  );
+}
+
+async function handleStart1v1Callback(message, env) {
+  await sendMessage(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '🎮 **Starting 1v1 Challenge...**\n\n*Please enter the username or ID of the player you want to challenge:*\n\nExample: @username or 123456789\n\nOr type /cancel to go back.'
+  );
+}
+
+async function handleViewRankingsCallback(message, db, env) {
+  await handleArenaRankingsCallback(message, env);
+}
+
+async function handleFindPartnerCallback(message, env) {
+  await sendMessage(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '🔍 **Finding Partners...**\n\nSearching for available players looking for partners...\n\n*Feature coming soon!*\n\nIn the meantime, share your referral code to invite friends!'
+  );
+}
+
+async function handleCreatePartnershipCallback(message, env) {
+  await sendMessage(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '👥 **Create Partnership**\n\n*Please enter the username or ID of your partner:*\n\nExample: @username or 123456789\n\nOr type /cancel to go back.'
+  );
+}
+
+async function handleFindSquadCallback(message, env) {
+  await sendMessage(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '🔍 **Browse Available Squads**\n\nSearching for active squads...\n\n*Feature coming soon!*\n\nIn the meantime, create your own squad and invite friends!'
+  );
+}
+
+async function handleCreateSquadCallback(message, env) {
+  await sendMessage(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '👥 **Create New Squad**\n\n*Please enter your squad name:*\n\nExample: Ghana Warriors, Quiz Masters, etc.\n\n(3-20 characters, letters and spaces only)\n\nOr type /cancel to go back.'
   );
 }
 
@@ -773,11 +891,25 @@ async function handleSubscribeCallback(message, env) {
   );
 }
 
-async function handleWalletCallback(message, env) {
+async function handleWalletCallback(message, db, env) {
+  const telegramId = message.from?.id || message.chat.id;
+  const user = await db.getUser(telegramId);
+  
+  if (!user) {
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '⚠️ Please use /start to register first!'
+    );
+    return;
+  }
+
+  const walletText = `💰 **My Wallet**\n\n**Current Balance:**\n• Arena Points: ${(user.ap || 0).toLocaleString()} AP\n• Prize Points: ${(user.pp || 0).toLocaleString()} PP\n• Total Earned: ${(user.total_ap || 0).toLocaleString()} AP | ${(user.total_pp || 0).toLocaleString()} PP\n\n**Weekly Progress:**\n• This Week: ${(user.weekly_points || 0).toLocaleString()} pts\n• Streak: ${user.streak || 0} days 🔥\n\n**Earn Points:**\n• Answer questions correctly\n• Build daily streaks\n• Win prize rounds\n• Refer friends`;
+
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '💰 **My Wallet**\n\n**Current Balance:**\n• Accumulated Points: 0 AP\n• Prize Points: 0 PP\n\n**Transaction History:**\nNo transactions yet\n\n**Earn Points:**\n• Answer questions correctly\n• Build daily streaks\n• Win prize rounds\n• Refer friends',
+    walletText,
     {
       inline_keyboard: [
         [
@@ -811,11 +943,38 @@ async function handleRewardsCallback(message, env) {
   );
 }
 
-async function handleStreakCallback(message, env) {
+async function handleStreakCallback(message, db, env) {
+  const telegramId = message.from?.id || message.chat.id;
+  const user = await db.getUser(telegramId);
+  
+  if (!user) {
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '⚠️ Please use /start to register first!'
+    );
+    return;
+  }
+
+  const currentStreak = user.streak || 0;
+  let nextMilestone = '3 days: +50 bonus points';
+  
+  if (currentStreak >= 30) {
+    nextMilestone = 'Max milestone reached! 🏆';
+  } else if (currentStreak >= 14) {
+    nextMilestone = '30 days: +1000 bonus points + Guaranteed 100MB data';
+  } else if (currentStreak >= 7) {
+    nextMilestone = '14 days: +300 bonus points + 1.2x multiplier';
+  } else if (currentStreak >= 3) {
+    nextMilestone = '7 days: +150 bonus points + Data draw entry';
+  }
+
+  const streakText = `🔥 **My Streak**\n\n**Current Streak:** ${currentStreak} day${currentStreak !== 1 ? 's' : ''} 🔥\n\n**Next Milestone:**\n${nextMilestone}\n\n**Streak Milestones:**\n🔥 3 days: +50 bonus points\n🔥 7 days: +150 bonus points + Data draw\n🔥 14 days: +300 bonus points + 1.2x multiplier\n🔥 30 days: +1000 bonus points + 100MB data\n\n**Streak Rules:**\n• Answer at least 1 question daily\n• Streak resets after 24h inactivity\n• Bonus points auto-credited\n\nKeep your streak alive! Play daily!`;
+
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '🔥 **My Streak**\n\n**Current Streak:** 0 days\n\n**Streak Milestones:**\n🔥 3 days: +5 bonus points\n🔥 7 days: +15 bonus points\n🔥 30 days: +50 bonus points\n\n**Streak Rules:**\n• Answer at least 1 question daily\n• Streak resets after 24h inactivity\n• Bonus points auto-credited\n\nKeep your streak alive! Play daily!',
+    streakText,
     {
       inline_keyboard: [
         [
@@ -830,16 +989,38 @@ async function handleStreakCallback(message, env) {
   );
 }
 
-async function handleReferralCallback(message, env) {
+async function handleReferralCallback(message, db, env) {
+  const telegramId = message.from?.id || message.chat.id;
+  const user = await db.getUser(telegramId);
+  
+  if (!user) {
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '⚠️ Please use /start to register first!'
+    );
+    return;
+  }
+
+  // Get actual referral code from user record or generate from telegram ID
+  const referralCode = user.referral_code || `GNEX${telegramId}`;
+  const botUsername = 'gnex_quiz_bot'; // Update this if your bot username is different
+  const referralLink = `https://t.me/${botUsername}?start=${referralCode}`;
+
+  // Get referral count
+  const referralCount = await db.getReferralCount(telegramId);
+
+  const referralText = `🤝 **Invite Friends**\n\n**Your Referral Code:**\n\`${referralCode}\`\n\n**Referral Link:**\n${referralLink}\n\n**Your Stats:**\n• Friends Referred: ${referralCount || 0}\n\n**Referral Rewards:**\n• Friend joins: +50 AP + 50MB data\n• Friend plays 10 games: +100 AP\n• Friend reaches Silver tier: +200 AP + 50 PP\n\n**Milestones:**\n• 5 referrals: +250 AP bonus\n• 10 referrals: +500 AP + 100MB data\n• 20 referrals: +1000 AP + 200 PP\n\n**How it works:**\n1. Share your referral link\n2. Friend uses /start ${referralCode}\n3. Earn rewards when they play!`;
+
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '🤝 **Invite Friends**\n\n**Your Referral Code:**\n`GNEX5715661449`\n\n**Referral Rewards:**\n• Friend joins: +5 AP\n• Friend plays 10 games: +20 AP\n• Friend goes premium: +50 PP\n\n**How it works:**\n1. Share your referral code\n2. Friend uses /start YOURCODE\n3. Earn rewards when they play!\n\n**Share Options:**\n• Copy link below\n• Share on social media\n• Invite in groups',
+    referralText,
     {
       inline_keyboard: [
         [
-          { text: '📋 Copy Code', callback_data: 'copy_referral' },
-          { text: '📤 Share Link', callback_data: 'share_referral' }
+          { text: '📋 Copy Link', url: referralLink },
+          { text: '📤 Share', url: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(`Join me on G-NEX Quiz Arena! Use my code ${referralCode} to get bonus points!`)}` }
         ],
         [
           { text: '🏆 Leaderboard', callback_data: 'show_leaderboard' },
