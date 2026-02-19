@@ -104,7 +104,8 @@ async function handleCallbackQuery(query, db, questionManager, env) {
     // Create a message-like object from the callback query
     const callbackMessage = {
       chat: { id: query.message.chat.id },
-      from: query.from
+      from: query.from,
+      message_id: query.message.message_id
     };
 
     console.log('Routing callback:', data);
@@ -266,8 +267,8 @@ async function handlePlayCallback(query, db, questionManager, env) {
   if (!user) {
     await editMessageText(
       env.TELEGRAM_BOT_TOKEN,
-      query.message.chat.id,
-      query.message.message_id,
+      query.chat.id,
+      query.message_id,
       'Please use /start first!'
     );
     return;
@@ -278,8 +279,8 @@ async function handlePlayCallback(query, db, questionManager, env) {
   if (error) {
     await editMessageText(
       env.TELEGRAM_BOT_TOKEN,
-      query.message.chat.id,
-      query.message.message_id,
+      query.chat.id,
+      query.message_id,
       error,
       createMainMenuKeyboard()
     );
@@ -289,8 +290,8 @@ async function handlePlayCallback(query, db, questionManager, env) {
   const questionText = questionManager.formatQuestionText(question, user.totalQuestions + 1);
   await editMessageText(
     env.TELEGRAM_BOT_TOKEN,
-    query.message.chat.id,
-    query.message.message_id,
+    query.chat.id,
+    query.message_id,
     questionText,
     createQuestionKeyboard(question.questionId)
   );
@@ -323,8 +324,8 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
   if (!result.success) {
     await editMessageText(
       env.TELEGRAM_BOT_TOKEN,
-      query.message.chat.id,
-      query.message.message_id,
+      query.chat.id,
+      query.message_id,
       result.error
     );
     return;
@@ -352,8 +353,8 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
 
   await editMessageText(
     env.TELEGRAM_BOT_TOKEN,
-    query.message.chat.id,
-    query.message.message_id,
+    query.chat.id,
+    query.message_id,
     responseText,
     createMainMenuKeyboard()
   );

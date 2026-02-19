@@ -18,7 +18,7 @@ export function createMainMenuKeyboard() {
       ],
       [
         { text: '🤝 Invite Friends' },
-        { text: '� Go Premium' }
+        { text: '💎 Go Premium' }
       ]
     ],
     resize_keyboard: true,
@@ -52,7 +52,7 @@ export function createContinuePlayingKeyboard() {
     inline_keyboard: [
       [
         { text: '▶️ Next Question', callback_data: 'play_continuous' },
-        { text: '� View Leaderboard', callback_data: 'show_leaderboard' }
+        { text: '📊 View Leaderboard', callback_data: 'show_leaderboard' }
       ]
     ]
   };
