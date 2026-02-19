@@ -260,7 +260,7 @@ export class ViralGrowthManager {
       return {
         success: true,
         card,
-        shareUrl: `https://t.me/gnex_quiz_bot?start=${card.id}`,
+        shareUrl: `https://t.me/codecadencebot?start=${card.id}`,
         imageUrl: this.generateCardImageUrl(card)
       };
     } catch (error) {
@@ -312,7 +312,7 @@ export class ViralGrowthManager {
       content += `\n🎯 Accuracy: ${userData.accuracy}%`;
     }
     
-    content += `\n\n🇬🇭 Play G-NEX: @gnex_quiz_bot`;
+    content += `\n\n🇬🇭 Play G-NEX: @codecadencebot`;
     
     return content;
   }
@@ -370,7 +370,7 @@ export class ViralGrowthManager {
       return {
         success: true,
         invite,
-        inviteUrl: `https://t.me/gnex_quiz_bot?join_squad=${invite.id}`
+        inviteUrl: `https://t.me/codecadencebot?join_squad=${invite.id}`
       };
     } catch (error) {
       logger.error('Error creating squad invite:', error);
@@ -397,7 +397,7 @@ export class ViralGrowthManager {
       return {
         success: true,
         invite,
-        inviteUrl: `https://t.me/gnex_quiz_bot?join_partner=${invite.id}`
+        inviteUrl: `https://t.me/codecadencebot?join_partner=${invite.id}`
       };
     } catch (error) {
       logger.error('Error creating partner invite:', error);
@@ -521,7 +521,7 @@ export class ViralGrowthManager {
       return {
         success: true,
         challenge,
-        challengeUrl: `https://t.me/gnex_quiz_bot?challenge=${challenge.id}`
+        challengeUrl: `https://t.me/codecadencebot?challenge=${challenge.id}`
       };
     } catch (error) {
       logger.error('Error creating viral challenge:', error);

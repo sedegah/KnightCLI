@@ -113,7 +113,7 @@ app.get('/', (c) => {
 
         <div class="cta">
             <h2>🚀 Ready to Play?</h2>
-            <a href="https://t.me/gnex_quiz_bot" class="btn">Start Playing on Telegram</a>
+            <a href="https://t.me/codecadencebot" class="btn">Start Playing on Telegram</a>
             <p><strong>Commands:</strong> /start, /play, /arena, /rewards, /streak, /referral</p>
         </div>
 

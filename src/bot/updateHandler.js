@@ -150,13 +150,15 @@ async function handleCallbackQuery(query, db, questionManager, env) {
     } else if (data === 'main_menu') {
       await handleMainMenuCallback(callbackMessage, env);
     } else if (data === 'individual_rankings') {
-      await handleIndividualRankingsCallback(callbackMessage, env);
+      await handleIndividualRankingsCallback(callbackMessage, db, env);
     } else if (data === 'squad_rankings') {
-      await handleSquadRankingsCallback(callbackMessage, env);
+      await handleSquadRankingsCallback(callbackMessage, db, env);
     } else if (data === 'partner_rankings') {
-      await handlePartnerRankingsCallback(callbackMessage, env);
+      await handlePartnerRankingsCallback(callbackMessage, db, env);
     } else if (data === 'streak_rankings') {
-      await handleStreakRankingsCallback(callbackMessage, env);
+      await handleStreakRankingsCallback(callbackMessage, db, env);
+    } else if (data === 'battle_rankings') {
+      await handleBattleRankingsCallback(callbackMessage, db, env);
     } else if (data === 'help') {
       await handleHelpCallback(callbackMessage, env);
     } else if (data === 'subscribe') {
@@ -702,10 +704,13 @@ async function handleArenaRankingsCallback(message, env) {
       inline_keyboard: [
         [
           { text: '👤 Individual Rankings', callback_data: 'individual_rankings' },
-          { text: '👥 Squad Rankings', callback_data: 'squad_rankings' }
+          { text: '⚔️ Battle Rankings', callback_data: 'battle_rankings' }
         ],
         [
-          { text: '🤝 Partner Rankings', callback_data: 'partner_rankings' },
+          { text: '👥 Squad Rankings', callback_data: 'squad_rankings' },
+          { text: '🤝 Partner Rankings', callback_data: 'partner_rankings' }
+        ],
+        [
           { text: '🔥 Streak Rankings', callback_data: 'streak_rankings' }
         ],
         [
@@ -792,11 +797,28 @@ async function handleMainMenuCallback(message, env) {
   );
 }
 
-async function handleIndividualRankingsCallback(message, env) {
+async function handleIndividualRankingsCallback(message, db, env) {
+  const topUsers = await db.getTopUsers(10);
+
+  let rankingsText = '👤 **Individual Rankings**\n\n🏆 **Weekly Top Players**\n\n';
+
+  if (topUsers.length === 0) {
+    rankingsText += 'No players yet! Be the first to play and climb the ranks!\n';
+  } else {
+    topUsers.forEach((user, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}️⃣`;
+      const name = user.full_name || user.username || `Player${user.telegram_id}`;
+      const tierEmoji = user.tier === 'Elite' ? '👑' : user.tier === 'Diamond' ? '💎' : user.tier === 'Gold' ? '🥇' : user.tier === 'Silver' ? '🥈' : '🥉';
+      rankingsText += `${medal} ${tierEmoji} **${name}** - ${(user.weekly_points || 0).toLocaleString()} pts\n`;
+    });
+  }
+
+  rankingsText += '\n*Rankings update every hour*';
+
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '👤 **Individual Rankings**\n\n🏆 **Weekly Top Players**\n\n1. 🥇 Player1 - 250 pts\n2. 🥈 Player2 - 230 pts\n3. 🥉 Player3 - 210 pts\n4. 4️⃣ Player4 - 195 pts\n5. 5️⃣ Player5 - 180 pts\n\n*Rankings update every hour*\n\n◀️ Back to Rankings',
+    rankingsText,
     {
       inline_keyboard: [
         [
@@ -808,11 +830,65 @@ async function handleIndividualRankingsCallback(message, env) {
   );
 }
 
-async function handleSquadRankingsCallback(message, env) {
+async function handleBattleRankingsCallback(message, db, env) {
+  const topBattlePlayers = await db.getTopBattlePlayers(10);
+
+  let rankingsText = '⚔️ **1v1 Battle Rankings**\n\n🏆 **Top Battle Champions**\n\n';
+
+  if (topBattlePlayers.length === 0) {
+    rankingsText += 'No battles yet! Challenge other players to start climbing the ranks!\n\nUse /arena to challenge someone!';
+  } else {
+    topBattlePlayers.forEach((player, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}️⃣`;
+      const name = player.full_name || player.username || `Player${player.telegram_id}`;
+      const tierEmoji = player.tier === 'Elite' ? '👑' : player.tier === 'Diamond' ? '💎' : player.tier === 'Gold' ? '🥇' : player.tier === 'Silver' ? '🥈' : '🥉';
+      const rating = player.battle_rating || 1000;
+      const wins = player.battles_won || 0;
+      const winPct = player.win_percentage || 0;
+      rankingsText += `${medal} ${tierEmoji} **${name}** - ${rating} ELO\n   ${wins}W | ${winPct.toFixed(1)}% WR\n\n`;
+    });
+  }
+
+  rankingsText += '\n*Rankings based on battle rating (ELO)*';
+
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '👥 **Squad Rankings**\n\n🏆 **Weekly Top Squads**\n\n1. 🥇 Ghana Champions - 850 pts\n2. 🥈 Quiz Masters - 720 pts\n3. 🥉 Brain Trust - 650 pts\n4. 4️⃣ Data Kings - 580 pts\n5. 5️⃣ Quiz Warriors - 520 pts\n\n*Rankings update every hour*\n\n◀️ Back to Rankings',
+    rankingsText,
+    {
+      inline_keyboard: [
+        [
+          { text: '🔄 Refresh', callback_data: 'battle_rankings' },
+          { text: '◀️ Back', callback_data: 'arena_rankings' }
+        ]
+      ]
+    }
+  );
+}
+
+async function handleSquadRankingsCallback(message, db, env) {
+  const topSquads = await db.getTopSquads(10);
+
+  let rankingsText = '👥 **Squad Rankings**\n\n🏆 **Weekly Top Squads**\n\n';
+
+  if (topSquads.length === 0) {
+    rankingsText += 'No squads yet! Create or join a squad to compete!\n\nUse /squad to get started!';
+  } else {
+    topSquads.forEach((squad, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}️⃣`;
+      const memberCount = squad.members_count || squad.active_members || 0;
+      const tierEmoji = squad.squad_tier === 'Elite' ? '👑' : squad.squad_tier === 'Diamond' ? '💎' : squad.squad_tier === 'Gold' ? '🥇' : squad.squad_tier === 'Silver' ? '🥈' : '🥉';
+      const winPct = squad.win_percentage || 0;
+      rankingsText += `${medal} ${tierEmoji} **${squad.name}**\n   ${(squad.weekly_points || 0).toLocaleString()} pts | ${memberCount} members | ${winPct.toFixed(0)}% WR\n\n`;
+    });
+  }
+
+  rankingsText += '\n*Rankings update every hour*';
+
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    rankingsText,
     {
       inline_keyboard: [
         [
@@ -824,11 +900,31 @@ async function handleSquadRankingsCallback(message, env) {
   );
 }
 
-async function handlePartnerRankingsCallback(message, env) {
+async function handlePartnerRankingsCallback(message, db, env) {
+  const topPartnerships = await db.getTopPartnerships(10);
+
+  let rankingsText = '🤝 **Partner Rankings**\n\n🏆 **Weekly Top Partners**\n\n';
+
+  if (topPartnerships.length === 0) {
+    rankingsText += 'No partnerships yet! Find a partner and dominate together!\n\nUse /partner to get started!';
+  } else {
+    topPartnerships.forEach((partnership, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}️⃣`;
+      const name1 = partnership.user1_name || 'Player 1';
+      const name2 = partnership.user2_name || 'Player 2';
+      const tierEmoji = partnership.tier === 'Elite' ? '👑' : partnership.tier === 'Diamond' ? '💎' : partnership.tier === 'Gold' ? '🥇' : partnership.tier === 'Silver' ? '🥈' : '🥉';
+      const winPct = partnership.win_percentage || 0;
+      const streak = partnership.current_streak || 0;
+      rankingsText += `${medal} ${tierEmoji} **${name1}** & **${name2}**\n   ${(partnership.weekly_points || 0).toLocaleString()} pts | ${streak} streak | ${winPct.toFixed(0)}% WR\n\n`;
+    });
+  }
+
+  rankingsText += '\n*Rankings update every hour*';
+
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '🤝 **Partner Rankings**\n\n🏆 **Weekly Top Partners**\n\n1. 🥇 Dream Team - 420 pts\n2. 🥈 Power Pair - 380 pts\n3. 🥉 Quiz Buddies - 350 pts\n4. 4️⃣ Smart Squad - 320 pts\n5. 5️⃣ Knowledge Kings - 290 pts\n\n*Rankings update every hour*\n\n◀️ Back to Rankings',
+    rankingsText,
     {
       inline_keyboard: [
         [
@@ -840,11 +936,29 @@ async function handlePartnerRankingsCallback(message, env) {
   );
 }
 
-async function handleStreakRankingsCallback(message, env) {
+async function handleStreakRankingsCallback(message, db, env) {
+  const topStreaks = await db.getTopStreaks(10);
+
+  let rankingsText = '🔥 **Streak Rankings**\n\n🏆 **Current Streak Champions**\n\n';
+
+  if (topStreaks.length === 0) {
+    rankingsText += 'No active streaks yet! Start playing daily to build your streak!\n\nPlay at least 1 question per day to maintain your streak!';
+  } else {
+    topStreaks.forEach((user, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}️⃣`;
+      const name = user.full_name || user.username || `Player${user.telegram_id}`;
+      const tierEmoji = user.tier === 'Elite' ? '👑' : user.tier === 'Diamond' ? '💎' : user.tier === 'Gold' ? '🥇' : user.tier === 'Silver' ? '🥈' : '🥉';
+      const streakDays = user.streak || 0;
+      rankingsText += `${medal} ${tierEmoji} **${name}** - ${streakDays} day${streakDays !== 1 ? 's' : ''} 🔥\n`;
+    });
+  }
+
+  rankingsText += '\n*Streaks reset after 24 hours of inactivity*';
+
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '🔥 **Streak Rankings**\n\n🏆 **Current Streak Champions**\n\n1. 🥇 Fire Starter - 45 days\n2. 🥈 Quiz Master - 30 days\n3. 🥉 Daily Player - 21 days\n4. 4️⃣ Week Warrior - 14 days\n5. 5️⃣ Rising Star - 7 days\n\n*Streaks reset after 24 hours of inactivity*\n\n◀️ Back to Rankings',
+    rankingsText,
     {
       inline_keyboard: [
         [
@@ -1004,7 +1118,7 @@ async function handleReferralCallback(message, db, env) {
 
   // Get actual referral code from user record or generate from telegram ID
   const referralCode = user.referral_code || `GNEX${telegramId}`;
-  const botUsername = 'gnex_quiz_bot'; // Update this if your bot username is different
+  const botUsername = 'codecadencebot';
   const referralLink = `https://t.me/${botUsername}?start=${referralCode}`;
 
   // Get referral count

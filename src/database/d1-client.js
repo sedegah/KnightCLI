@@ -376,4 +376,69 @@ export class D1Database {
       logger.error('Error clearing active question:', error);
       return false;
     }
-  }}
+  }
+
+  /**
+   * Get top squads for rankings
+   */
+  async getTopSquads(limit = 10) {
+    try {
+      const result = await this.executeQuery(
+        `SELECT * FROM v_squad_rankings LIMIT ?`,
+        [limit]
+      );
+      return result;
+    } catch (error) {
+      logger.error('Error getting top squads:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get top 1v1 battle players
+   */
+  async getTopBattlePlayers(limit = 10) {
+    try {
+      const result = await this.executeQuery(
+        `SELECT * FROM v_battle_rankings LIMIT ?`,
+        [limit]
+      );
+      return result;
+    } catch (error) {
+      logger.error('Error getting top battle players:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get top partnerships for rankings
+   */
+  async getTopPartnerships(limit = 10) {
+    try {
+      const result = await this.executeQuery(
+        `SELECT * FROM v_partnership_rankings LIMIT ?`,
+        [limit]
+      );
+      return result;
+    } catch (error) {
+      logger.error('Error getting top partnerships:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get top streak leaders
+   */
+  async getTopStreaks(limit = 10) {
+    try {
+      const result = await this.executeQuery(
+        `SELECT * FROM v_streak_rankings LIMIT ?`,
+        [limit]
+      );
+      return result;
+    } catch (error) {
+      logger.error('Error getting top streaks:', error);
+      return [];
+    }
+  }
+}
