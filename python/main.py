@@ -88,7 +88,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     </ul>
     
     <p>
-        <a href="https://t.me/knight_quiz_bot">Start Playing on Telegram</a>
+        <a href="https://t.me/codecadencebot">Start Playing on Telegram</a>
     </p>
     
     <p>Bot Status: Live and Running</p>
