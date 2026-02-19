@@ -1,4 +1,4 @@
-name = "icrush-quiz-game"
+name = "gnex-telegram-bot"
 main = "src/index.js"
 compatibility_date = "2024-03-21"
 compatibility_flags = ["nodejs_compat"]
@@ -9,7 +9,7 @@ database_name = "gnex-db-dev"
 database_id = "752a111e-1154-4a5b-9854-7784320dc6db"
 
 [env.production]
-name = "icrush-quiz-game"
+name = "gnex-telegram-bot"
 vars = { ENVIRONMENT = "production" }
 
 [env.production.d1_databases]
