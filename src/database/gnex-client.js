@@ -46,7 +46,7 @@ export class GNEXDatabase {
         id: crypto.randomUUID(),
         telegram_id: userData.telegramId,
         username: userData.username || `user_${userData.telegramId}`,
-        full_name: userData.fullName,
+        full_name: userData.full_name,
         ap: 0,
         pp: 0,
         weekly_points: 0,

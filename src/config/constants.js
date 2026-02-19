@@ -18,27 +18,13 @@ export const PointType = {
 };
 
 export const MESSAGES = {
-  welcome: `🎮 **Welcome to G-NEX Quiz Game!**
+  welcome: `👋 Welcome to **I-Crush Quiz Game**!
 
-Play quizzes, earn points, and win prizes!
+Test your knowledge and win prizes!
 
-**Two Ways to Play:**
+*Powered by G-NEX*`,
 
-📚 **Continuous Play** (All Day)
-• Answer questions anytime
-• Earn Accumulated Points (AP)
-• Build your streak
-• Climb the leaderboard
-
-🏆 **Prize Rounds** (2x Daily)
-• 9:00 AM & 9:00 PM UTC
-• Earn Prize Points (PP)
-• Win real rewards
-• Speed matters!
-
-Use the menu below to start playing or check your stats!`,
-
-  stats: `📊 **Your Stats**
+  stats_template: `📊 **Your Stats**
 
 **Points**
 • AP: {ap} (Total: {totalAp})
@@ -48,10 +34,46 @@ Use the menu below to start playing or check your stats!`,
 **Performance**
 • Streak: {streak} days 🔥
 • Questions: {totalQuestions}
+• Correct: {correctAnswers}
 • Accuracy: {accuracy}%
-• Rank: {rank}
 
-**Status**: {userType}`,
+**User Type:** {userType}
+**Rank:** {rank}`,
+
+  subscribe_info: `💎 **Go Premium**
+
+**Premium Benefits:**
+• 40 questions/hour (vs 20 free)
+• +7 speed bonus points
+• Exclusive premium questions
+• Priority support
+• Special tournaments
+
+**Pricing:**
+🇬🇭 Ghana: 5 GHS/month
+🌍 International: $3/month
+
+Ready to upgrade? Contact @icrush_support`,
+
+  invite_message: `🤝 **Share Your Referral Link**
+
+Your unique referral code: {referral_code}
+
+**How it works:**
+1. Share this link with friends
+2. They use /start {referral_code}
+3. You earn rewards when they play!
+
+**Your Referral Stats:**
+• Total Referrals: {referral_count}
+• Pending Rewards: {pending_rewards}
+
+**Share Options:**
+• Copy your code above
+• Share in groups and social media
+• Invite friends directly
+
+Start referring and earning today! 🚀`,
 
   prizeRoundActive: `🏆 **PRIZE ROUND ACTIVE!**
 
@@ -81,7 +103,7 @@ Keep up the great work! 🎉`,
 
   wrongAnswer: `❌ **Incorrect**
 
-The correct answer was: **{correctAnswer}**
+The correct answer was: {correctAnswer}
 
 Don't give up! Keep playing to improve! 💪`,
 
@@ -99,25 +121,43 @@ Don't worry! Start a new streak by playing today!`,
 
 Keep playing to climb the rankings!`,
 
-  help: `❓ **How to Play**
+  help: `📚 **Quiz Bot Help**
 
 **Commands:**
 /start - Register and begin
 /play - Answer a question
 /stats - View your statistics
 /leaderboard - See top players
-/help - Show this message
+/help - Show this help message
 
-**Game Modes:**
-• Continuous Play: Build streaks, earn AP
-• Prize Rounds: Compete for real rewards
+**How to Play:**
+1. Tap "▶️ Play Quiz" to get a question
+2. Select your answer (A, B, C, or D)
+3. Earn points for correct answers
+4. Build your streak by playing daily
+5. Compete for top spots on leaderboard
 
-**Tips:**
-• Answer quickly for speed bonuses
-• Play daily to maintain your streak
-• Upgrade for more attempts and points
+**Prize Rounds:**
+• 9:00 AM UTC - Morning Round
+• 9:00 PM UTC - Evening Round
 
-Good luck! 🍀`
+Top players win prizes! 🏆
+
+**Need Support?**
+Contact @admin for help.`,
+
+  subscribe_prompt: `💎 **Upgrade to Premium**
+
+Get more from your quiz experience!
+
+**Premium Benefits:**
+• 40 questions/hour (vs 20 free)
+• +7 speed bonus points
+• Exclusive premium questions
+• Priority support
+• Special tournaments
+
+**Ready to upgrade?** Contact @icrush_support`
 };
 
 export const BUTTON_LABELS = {

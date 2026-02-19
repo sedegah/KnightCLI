@@ -1,47 +1,16 @@
-name = "gnex-telegram-bot"
+name = "icrush-quiz-game"
 main = "src/index.js"
-compatibility_date = "2024-09-23"   
+compatibility_date = "2024-03-21"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare Workers settings
-workers_dev = true
-send_metrics = true
+[[d1_databases]]
+binding = "GNEX_D1"
+database_name = "icrush-quiz-db"
+database_id = "752a111e-1154-4a5b-9854-7784320dc6db"
 
-# D1 Database binding (relational data)
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "gnex-db"
-# database_id = "512ea081-b51d-4203-8964-f6070e526fcf" 
+[env.production]
+name = "icrush-quiz-game"
+vars = { ENVIRONMENT = "production" }
 
-# KV Namespace binding (fast cache)
-[[kv_namespaces]]
-binding = "GNEX_KV"
-id = "05afb820aabb4a3eb9f144f21341bfc7"
-
-# Environment variables (access via ENV in code)
-[vars]
-ENVIRONMENT = "production"
-LOG_LEVEL = "info"
-ADMIN_TELEGRAM_IDS = "123456789,987654321"        
-
-
-# Local development environment
-[env.dev]
-name = "gnex-telegram-bot-dev"
-workers_dev = true
-
-[env.dev.vars]
-ENVIRONMENT = "development"
-LOG_LEVEL = "debug"
-ADMIN_TELEGRAM_IDS = "123456789,987654321"
-
-# D1 database for development
-# [[env.dev.d1_databases]]
-# binding = "DB"
-# database_name = "gnex-db-dev"
-# database_id = "752a111e-1154-4a5b-9854-7784320dc6db" 
-
-# KV namespace for development
-[[env.dev.kv_namespaces]]
-binding = "GNEX_KV"
-id = "89611257fbea4123b18909f67a02bec1"
+[env.production.d1_databases]
+GNEX_D1_PREVIEW = false

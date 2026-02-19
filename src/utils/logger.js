@@ -39,4 +39,4 @@ class Logger {
   }
 }
 
-export const logger = new Logger(process.env.LOG_LEVEL || 'info');
+export const logger = new Logger('info');

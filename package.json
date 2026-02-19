@@ -23,7 +23,7 @@
   "author": "G-NEX Team",
   "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.95.3",
+    "@supabase/supabase-js": "^2.97.0",
     "hono": "^4.11.9",
     "node-fetch": "^3.3.2"
   },

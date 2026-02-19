@@ -7,6 +7,7 @@
 import { Hono } from 'hono';
 import { handleTelegramUpdate } from './bot/updateHandler.js';
 import { verifyTelegramRequest } from './utils/security.js';
+import { D1Database } from './database/d1-client.js';
 import { logger } from './utils/logger.js';
 
 const app = new Hono();

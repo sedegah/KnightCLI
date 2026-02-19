@@ -3,7 +3,7 @@
  * Routes and processes all Telegram updates
  */
 
-import { GNEXDatabase } from '../database/gnex-client.js';
+import { D1Database } from '../database/d1-client.js';
 import { QuestionManager } from '../game/questionManager.js';
 import { ArenaManager } from '../game/arena.js';
 import { RankingSystem } from '../game/ranking.js';
@@ -18,17 +18,17 @@ import { createMainMenuKeyboard, createQuestionKeyboard } from './keyboards.js';
 import { MESSAGES } from '../config/constants.js';
 
 export async function handleTelegramUpdate(update, env) {
-  const db = new GNEXDatabase(env.GNEX_KV);
+  const db = new D1Database(env);
   const questionManager = new QuestionManager(db);
   
   // Initialize all game systems with the same database instance
-  const arenaManager = new ArenaManager(env.GNEX_KV);
-  const rankingSystem = new RankingSystem(env.GNEX_KV);
-  const streakManager = new StreakManager(env.GNEX_KV);
-  const economyManager = new EconomyManager(env.GNEX_KV);
-  const ghanaQuestions = new GhanaQuestionManager(env.GNEX_KV);
-  const dataRewardManager = new DataRewardManager(env.GNEX_KV);
-  const viralGrowth = new ViralGrowthManager(env.GNEX_KV);
+  const arenaManager = new ArenaManager(db);
+  const rankingSystem = new RankingSystem(db);
+  const streakManager = new StreakManager(db);
+  const economyManager = new EconomyManager(db);
+  const ghanaQuestions = new GhanaQuestionManager(db);
+  const dataRewardManager = new DataRewardManager(db);
+  const viralGrowth = new ViralGrowthManager(db);
 
   try {
     if (update.message) {
@@ -192,7 +192,7 @@ async function handleStartCommand(message, db, env) {
     user = await db.createUser({
       telegramId,
       username,
-      fullName,
+      full_name: fullName,
       referredBy: referralCode
     });
 
@@ -377,16 +377,17 @@ async function handleStatsCommand(message, db, env) {
     : 0;
   const userType = user.subscriptionStatus === 'subscriber' ? '💎 Premium' : 'Free';
 
-  const statsText = MESSAGES.stats
+  const statsText = MESSAGES.stats_template
     .replace('{ap}', user.ap.toLocaleString())
     .replace('{totalAp}', user.totalAp.toLocaleString())
     .replace('{pp}', user.pp.toLocaleString())
     .replace('{weeklyPoints}', user.weeklyPoints.toLocaleString())
     .replace('{streak}', user.streak)
     .replace('{totalQuestions}', user.totalQuestions)
+    .replace('{correctAnswers}', user.correctAnswers)
     .replace('{accuracy}', accuracy)
-    .replace('{rank}', rank)
-    .replace('{userType}', userType);
+    .replace('{userType}', userType)
+    .replace('{rank}', rank);
 
   await sendMessageWithKeyboard(env.TELEGRAM_BOT_TOKEN, message.chat.id, statsText, createMainMenuKeyboard());
 }
