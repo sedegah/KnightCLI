@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [[d1_databases]]
 binding = "GNEX_D1"
-database_name = "icrush-quiz-db"
+database_name = "gnex-db-dev"
 database_id = "752a111e-1154-4a5b-9854-7784320dc6db"
 
 [env.production]
