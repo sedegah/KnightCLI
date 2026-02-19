@@ -1,28 +1,33 @@
 /**
  * Telegram Keyboards
- * Creates inline keyboards for bot interactions
+ * Creates keyboards for bot interactions
  */
 
 /**
- * Create main menu keyboard
+ * Create main menu keyboard (ReplyKeyboard - regular buttons)
  */
 export function createMainMenuKeyboard() {
   return {
-    inline_keyboard: [
+    keyboard: [
       [
-        { text: '▶️ Play Quiz', callback_data: 'play_continuous' },
-        { text: '� My Stats', callback_data: 'show_stats' }
+        { text: '▶️ Play Quiz' }
       ],
       [
-        { text: '🏆 Leaderboard', callback_data: 'show_leaderboard' },
-        { text: '❓ Help', callback_data: 'help' }
+        { text: '🏆 Leaderboard' },
+        { text: '👤 My Stats' }
+      ],
+      [
+        { text: '🤝 Invite Friends' },
+        { text: '� Go Premium' }
       ]
-    ]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false
   };
 }
 
 /**
- * Create question options keyboard
+ * Create question options keyboard (InlineKeyboard - callback buttons)
  */
 export function createQuestionKeyboard(questionId) {
   return {
@@ -40,16 +45,83 @@ export function createQuestionKeyboard(questionId) {
 }
 
 /**
- * Create subscribe/upgrade keyboard
+ * Create continue playing keyboard (InlineKeyboard)
  */
-export function createSubscribeKeyboard() {
+export function createContinuePlayingKeyboard() {
   return {
     inline_keyboard: [
       [
-        { text: '💎 Upgrade to Premium', callback_data: 'subscribe' }
-      ],
+        { text: '▶️ Next Question', callback_data: 'play_continuous' },
+        { text: '� View Leaderboard', callback_data: 'show_leaderboard' }
+      ]
+    ]
+  };
+}
+
+/**
+ * Create retry or continue keyboard (InlineKeyboard)
+ */
+export function createRetryOrContinueKeyboard(hasAttemptsLeft = false) {
+  const keyboard = [];
+  
+  if (hasAttemptsLeft) {
+    keyboard.push([
+      { text: '� Try Again (2nd attempt)', callback_data: 'retry_question' }
+    ]);
+  }
+  
+  keyboard.push(
+    [
+      { text: '▶️ Next Question', callback_data: 'play_continuous' }
+    ],
+    [
+      { text: '📊 My Stats', callback_data: 'show_stats' }
+    ]
+  );
+  
+  return {
+    inline_keyboard: keyboard
+  };
+}
+
+/**
+ * Create subscribe prompt keyboard (InlineKeyboard)
+ */
+export function createSubscribePromptKeyboard() {
+  return {
+    inline_keyboard: [
       [
-        { text: '◀️ Back', callback_data: 'main_menu' }
+        { text: '💎 Learn More', callback_data: 'subscribe_info' },
+        { text: '▶️ Continue as Free', callback_data: 'play_continuous' }
+      ]
+    ]
+  };
+}
+
+/**
+ * Create leaderboard actions keyboard (InlineKeyboard)
+ */
+export function createLeaderboardActionsKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: '🔄 Refresh', callback_data: 'show_leaderboard' },
+        { text: '▶️ Play Now', callback_data: 'play_continuous' }
+      ]
+    ]
+  };
+}
+
+/**
+ * Create stats actions keyboard (InlineKeyboard)
+ */
+export function createStatsActionsKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: '▶️ Play Quiz', callback_data: 'play_continuous' },
+        { text: '🏆 Leaderboard', callback_data: 'show_leaderboard' },
+        { text: '💎 Go Premium', callback_data: 'subscribe_info' }
       ]
     ]
   };

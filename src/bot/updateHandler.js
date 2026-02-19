@@ -13,7 +13,7 @@ import { GhanaQuestionManager } from '../game/ghanaQuestions.js';
 import { DataRewardManager } from '../game/dataRewards.js';
 import { ViralGrowthManager } from '../growth/viral.js';
 import { logger } from '../utils/logger.js';
-import { sendMessage, sendMessageWithKeyboard } from '../utils/telegram.js';
+import { sendMessage, sendMessageWithKeyboard, editMessageText } from '../utils/telegram.js';
 import { createMainMenuKeyboard, createQuestionKeyboard } from './keyboards.js';
 import { MESSAGES } from '../config/constants.js';
 
@@ -51,37 +51,28 @@ async function handleMessage(message, db, questionManager, env) {
   // Handle commands
   if (text.startsWith('/start')) {
     await handleStartCommand(message, db, env);
-  } else if (text === '/play' || text === '▶️ Play Quiz') {
+  } else if (text === '/play') {
     await handlePlayCommand(message, db, questionManager, env);
   } else if (text === '/stats') {
     await handleStatsCommand(message, db, env);
-  } else if (text === '/leaderboard' || text === '🏆 Leaderboard') {
+  } else if (text === '/leaderboard') {
     await handleLeaderboardCommand(message, db, env);
   } else if (text === '/help') {
     await handleHelpCommand(message, env);
-  } else if (text === '/arena') {
-    await handleArenaCommand(message, env);
-  } else if (text === '/challenge') {
-    await handleChallengeCommand(message, env);
-  } else if (text === '/partner') {
-    await handlePartnerCommand(message, env);
-  } else if (text === '/squad') {
-    await handleSquadCommand(message, env);
-  } else if (text === '/rewards') {
-    await handleRewardsCommand(message, env);
-  } else if (text === '/wallet') {
-    await handleWalletCommand(message, env);
-  } else if (text === '/streak') {
-    await handleStreakCommand(message, env);
-  } else if (text === '/referral') {
-    await handleReferralCommand(message, env);
-  } else if (text === '/share') {
-    await handleShareCommand(message, env);
   } else if (text === '/invite') {
     await handleInviteCommand(message, env);
-  } else if (text.trim() === '') {
-    // Handle empty messages (like button presses without text)
-    await handleUnknownMessage(message, db, env);
+  } else if (text === '/subscribe') {
+    await handleSubscribeCommand(message, env);
+  } else if (text === '▶️ Play Quiz') {
+    await handlePlayCommand(message, db, questionManager, env);
+  } else if (text === '👤 My Stats') {
+    await handleStatsCommand(message, db, env);
+  } else if (text === '🏆 Leaderboard') {
+    await handleLeaderboardCommand(message, db, env);
+  } else if (text === '🤝 Invite Friends') {
+    await handleInviteCommand(message, env);
+  } else if (text === '💎 Go Premium') {
+    await handleSubscribeCommand(message, env);
   } else {
     // Handle unknown messages with main menu
     await handleUnknownMessage(message, db, env);
@@ -95,43 +86,78 @@ async function handleCallbackQuery(query, db, questionManager, env) {
   const telegramId = query.from.id;
   const data = query.callback_data || '';
 
-  // Acknowledge the callback
-  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ callback_query_id: query.id })
-  });
+  // Log callback for debugging
+  console.log('Callback received:', { telegramId, data, queryId: query.id });
 
-  // Parse callback data
-  if (data === 'play_continuous') {
-    await handlePlayCallback(query.message, db, questionManager, env);
-  } else if (data === 'show_stats') {
-    await handleStatsCallback(query.message, db, env);
-  } else if (data === 'show_leaderboard') {
-    await handleLeaderboardCallback(query.message, db, env);
-  } else if (data.startsWith('answer_')) {
-    await handleAnswerCallback(query, data, db, questionManager, env);
-  } else if (data === 'arena_1v1') {
-    await handleArena1v1Callback(query.message, env);
-  } else if (data === 'arena_partner') {
-    await handleArenaPartnerCallback(query.message, env);
-  } else if (data === 'arena_squad') {
-    await handleArenaSquadCallback(query.message, env);
-  } else if (data === 'arena_rankings') {
-    await handleArenaRankingsCallback(query.message, env);
-  } else if (data === 'main_menu') {
-    await handleMainMenuCallback(query.message, env);
-  } else if (data === 'individual_rankings') {
-    await handleIndividualRankingsCallback(query.message, env);
-  } else if (data === 'squad_rankings') {
-    await handleSquadRankingsCallback(query.message, env);
-  } else if (data === 'partner_rankings') {
-    await handlePartnerRankingsCallback(query.message, env);
-  } else if (data === 'streak_rankings') {
-    await handleStreakRankingsCallback(query.message, env);
-  } else {
-    // Handle unknown callback data
-    console.warn('Unknown callback data:', data);
+  try {
+    // Acknowledge the callback
+    const ackResponse = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: query.id })
+    });
+
+    if (!ackResponse.ok) {
+      console.error('Failed to acknowledge callback:', await ackResponse.text());
+    }
+
+    // Create a message-like object from the callback query
+    const callbackMessage = {
+      chat: { id: query.message.chat.id },
+      from: query.from
+    };
+
+    console.log('Routing callback:', data);
+
+    // Route callback to appropriate handler
+    if (data === 'play_continuous') {
+      await handlePlayCallback(callbackMessage, db, questionManager, env);
+    } else if (data === 'show_stats') {
+      await handleStatsCallback(callbackMessage, db, env);
+    } else if (data === 'show_leaderboard') {
+      await handleLeaderboardCallback(callbackMessage, db, env);
+    } else if (data.startsWith('answer_')) {
+      await handleAnswerCallback(query, data, db, questionManager, env);
+    } else if (data === 'arena_1v1') {
+      await handleArena1v1Callback(callbackMessage, env);
+    } else if (data === 'arena_partner') {
+      await handleArenaPartnerCallback(callbackMessage, env);
+    } else if (data === 'arena_squad') {
+      await handleArenaSquadCallback(callbackMessage, env);
+    } else if (data === 'arena_rankings') {
+      await handleArenaRankingsCallback(callbackMessage, env);
+    } else if (data === 'main_menu') {
+      await handleMainMenuCallback(callbackMessage, env);
+    } else if (data === 'individual_rankings') {
+      await handleIndividualRankingsCallback(callbackMessage, env);
+    } else if (data === 'squad_rankings') {
+      await handleSquadRankingsCallback(callbackMessage, env);
+    } else if (data === 'partner_rankings') {
+      await handlePartnerRankingsCallback(callbackMessage, env);
+    } else if (data === 'streak_rankings') {
+      await handleStreakRankingsCallback(callbackMessage, env);
+    } else if (data === 'help') {
+      await handleHelpCallback(callbackMessage, env);
+    } else if (data === 'subscribe') {
+      await handleSubscribeCallback(callbackMessage, env);
+    } else if (data === 'wallet') {
+      await handleWalletCallback(callbackMessage, env);
+    } else if (data === 'rewards') {
+      await handleRewardsCallback(callbackMessage, env);
+    } else if (data === 'streak') {
+      await handleStreakCallback(callbackMessage, env);
+    } else if (data === 'referral') {
+      await handleReferralCallback(callbackMessage, env);
+    } else if (data === 'arena') {
+      await handleArenaCallback(callbackMessage, env);
+    } else {
+      // Handle unknown callback data
+      console.warn('Unknown callback data:', data);
+      await sendMessage(env.TELEGRAM_BOT_TOKEN, callbackMessage.chat.id, '❌ Unknown button action');
+    }
+  } catch (error) {
+    console.error('Error handling callback:', error);
+    await sendMessage(env.TELEGRAM_BOT_TOKEN, query.message.chat.id, '❌ Error processing button');
   }
 }
 
@@ -151,10 +177,10 @@ async function handleStartCommand(message, db, env) {
     await sendMessageWithKeyboard(
       env.TELEGRAM_BOT_TOKEN,
       message.chat.id,
-      `Welcome back, ${user.fullName}! 👋\n\n` +
+      `Welcome back, ${user.full_name}! 👋\n\n` +
       `Your Points: ${user.ap} AP | ${user.pp} PP\n` +
       `Streak: ${user.streak} days 🔥\n\n` +
-      `Ready to play?`,
+      `Ready to crush some questions?\n\n*I-Crush by G-NEX*`,
       createMainMenuKeyboard()
     );
   } else {
@@ -233,26 +259,38 @@ async function handlePlayCommand(message, db, questionManager, env) {
 /**
  * Play button callback handler
  */
-async function handlePlayCallback(message, db, questionManager, env) {
-  const telegramId = message.chat.id;
+async function handlePlayCallback(query, db, questionManager, env) {
+  const telegramId = query.from.id;
   const user = await db.getUser(telegramId);
 
   if (!user) {
-    await sendMessage(env.TELEGRAM_BOT_TOKEN, message.chat.id, 'Please use /start first!');
+    await editMessageText(
+      env.TELEGRAM_BOT_TOKEN,
+      query.message.chat.id,
+      query.message.message_id,
+      'Please use /start first!'
+    );
     return;
   }
 
   const { question, error } = await questionManager.getQuestionForUser(user, false);
 
   if (error) {
-    await sendMessageWithKeyboard(env.TELEGRAM_BOT_TOKEN, message.chat.id, error, createMainMenuKeyboard());
+    await editMessageText(
+      env.TELEGRAM_BOT_TOKEN,
+      query.message.chat.id,
+      query.message.message_id,
+      error,
+      createMainMenuKeyboard()
+    );
     return;
   }
 
   const questionText = questionManager.formatQuestionText(question, user.totalQuestions + 1);
-  await sendMessageWithKeyboard(
+  await editMessageText(
     env.TELEGRAM_BOT_TOKEN,
-    message.chat.id,
+    query.message.chat.id,
+    query.message.message_id,
     questionText,
     createQuestionKeyboard(question.questionId)
   );
@@ -283,7 +321,12 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
   const result = await questionManager.processAnswer(user, questionId, selectedOption, false);
 
   if (!result.success) {
-    await sendMessage(env.TELEGRAM_BOT_TOKEN, query.message.chat.id, result.error);
+    await editMessageText(
+      env.TELEGRAM_BOT_TOKEN,
+      query.message.chat.id,
+      query.message.message_id,
+      result.error
+    );
     return;
   }
 
@@ -307,9 +350,10 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
     responseText += `\n\n💔 Your ${result.user.streak - 1}-day streak has ended. Start a new one!`;
   }
 
-  await sendMessageWithKeyboard(
+  await editMessageText(
     env.TELEGRAM_BOT_TOKEN,
     query.message.chat.id,
+    query.message.message_id,
     responseText,
     createMainMenuKeyboard()
   );
@@ -389,32 +433,13 @@ async function handleHelpCommand(message, env) {
 }
 
 /**
- * Handle unknown messages with main menu
+ * Handle unknown messages
  */
 async function handleUnknownMessage(message, db, env) {
-  const telegramId = message.from.id;
-  
-  // Check if user exists
-  let user = await db.getUser(telegramId);
-  
-  if (!user) {
-    // Create new user
-    user = await db.createUser({
-      telegramId: telegramId,
-      username: message.from.username,
-      fullName: message.from.first_name + (message.from.last_name ? ' ' + message.from.last_name : '')
-    });
-  }
-  
-  // Show main menu
-  const welcomeText = user 
-    ? `👋 Welcome back, **${user.fullName}**!\n\nReady to test your knowledge?`
-    : `👋 Welcome to **G-NEX Quiz Bot**!\n\nTest your knowledge and win prizes!`;
-    
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    welcomeText,
+    "I didn't understand that. Please use the menu buttons or /help for commands.",
     createMainMenuKeyboard()
   );
 }
@@ -609,7 +634,7 @@ async function handleMainMenuCallback(message, env) {
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '🎮 **G-NEX Main Menu**\n\nChoose your adventure:',
+    '👋 Welcome to **I-Crush Quiz Game**!\n\nTest your knowledge and win prizes!\n\n*Powered by G-NEX*',
     {
       inline_keyboard: [
         [
@@ -691,6 +716,141 @@ async function handleStreakRankingsCallback(message, env) {
         [
           { text: '🔄 Refresh', callback_data: 'streak_rankings' },
           { text: '◀️ Back', callback_data: 'arena_rankings' }
+        ]
+      ]
+    }
+  );
+}
+
+// ==========================================
+// ADDITIONAL CALLBACK HANDLERS
+// ==========================================
+
+async function handleHelpCallback(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '📚 **I-Crush Help Center**\n\n**How to Play:**\n• Answer questions to earn points\n• Build daily streaks for bonuses\n• Compete on leaderboards\n• Win real rewards\n\n**Commands:**\n/start - Begin your journey\n/play - Answer a question\n/stats - View your statistics\n/leaderboard - See top players\n\n**Need more help?**\nContact: @icrush_support\n\n*Powered by G-NEX*',
+    {
+      inline_keyboard: [
+        [
+          { text: '◀️ Back to Menu', callback_data: 'main_menu' }
+        ]
+      ]
+    }
+  );
+}
+
+async function handleSubscribeCallback(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '💎 **Go Premium**\n\n**Premium Benefits:**\n• 40 questions/hour (vs 20 free)\n• +7 speed bonus points\n• Exclusive premium questions\n• Priority support\n• Special tournaments\n\n**Pricing:**\n🇬🇭 Ghana: 5 GHS/month\n🌍 International: $3/month\n\nReady to upgrade? Contact @gnex_support',
+    {
+      inline_keyboard: [
+        [
+          { text: '💬 Contact Support', callback_data: 'help' },
+          { text: '◀️ Back', callback_data: 'main_menu' }
+        ]
+      ]
+    }
+  );
+}
+
+async function handleWalletCallback(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '💰 **My Wallet**\n\n**Current Balance:**\n• Accumulated Points: 0 AP\n• Prize Points: 0 PP\n\n**Transaction History:**\nNo transactions yet\n\n**Earn Points:**\n• Answer questions correctly\n• Build daily streaks\n• Win prize rounds\n• Refer friends',
+    {
+      inline_keyboard: [
+        [
+          { text: '🎮 Play to Earn', callback_data: 'play_continuous' },
+          { text: '🤝 Refer Friends', callback_data: 'referral' }
+        ],
+        [
+          { text: '◀️ Back to Menu', callback_data: 'main_menu' }
+        ]
+      ]
+    }
+  );
+}
+
+async function handleRewardsCallback(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '🎁 **Rewards Center**\n\n**Available Rewards:**\n\n📱 **Data Bundles**\n• 100MB - 50 PP\n• 500MB - 200 PP\n• 1GB - 350 PP\n\n🎮 **Game Items**\n• Extra Life - 30 PP\n• Skip Question - 20 PP\n• 50/50 Help - 15 PP\n\n💰 **Cash Prizes**\n• Weekly Top 10: 100-1000 PP\n\nComing soon! Check back for available rewards.',
+    {
+      inline_keyboard: [
+        [
+          { text: '🏆 View Rankings', callback_data: 'show_leaderboard' },
+          { text: '🎮 Play Now', callback_data: 'play_continuous' }
+        ],
+        [
+          { text: '◀️ Back to Menu', callback_data: 'main_menu' }
+        ]
+      ]
+    }
+  );
+}
+
+async function handleStreakCallback(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '🔥 **My Streak**\n\n**Current Streak:** 0 days\n\n**Streak Milestones:**\n🔥 3 days: +5 bonus points\n🔥 7 days: +15 bonus points\n🔥 30 days: +50 bonus points\n\n**Streak Rules:**\n• Answer at least 1 question daily\n• Streak resets after 24h inactivity\n• Bonus points auto-credited\n\nKeep your streak alive! Play daily!',
+    {
+      inline_keyboard: [
+        [
+          { text: '▶️ Play Now', callback_data: 'play_continuous' },
+          { text: '📊 My Stats', callback_data: 'show_stats' }
+        ],
+        [
+          { text: '◀️ Back to Menu', callback_data: 'main_menu' }
+        ]
+      ]
+    }
+  );
+}
+
+async function handleReferralCallback(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '🤝 **Invite Friends**\n\n**Your Referral Code:**\n`GNEX5715661449`\n\n**Referral Rewards:**\n• Friend joins: +5 AP\n• Friend plays 10 games: +20 AP\n• Friend goes premium: +50 PP\n\n**How it works:**\n1. Share your referral code\n2. Friend uses /start YOURCODE\n3. Earn rewards when they play!\n\n**Share Options:**\n• Copy link below\n• Share on social media\n• Invite in groups',
+    {
+      inline_keyboard: [
+        [
+          { text: '📋 Copy Code', callback_data: 'copy_referral' },
+          { text: '📤 Share Link', callback_data: 'share_referral' }
+        ],
+        [
+          { text: '🏆 Leaderboard', callback_data: 'show_leaderboard' },
+          { text: '◀️ Back to Menu', callback_data: 'main_menu' }
+        ]
+      ]
+    }
+  );
+}
+
+async function handleArenaCallback(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '🏟️ **G-NEX Arena**\n\nChoose your battle mode:',
+    {
+      inline_keyboard: [
+        [
+          { text: '⚔️ 1v1 Challenge', callback_data: 'arena_1v1' },
+          { text: '🤝 Find Partner', callback_data: 'arena_partner' }
+        ],
+        [
+          { text: '👥 Join Squad', callback_data: 'arena_squad' },
+          { text: '🏆 View Rankings', callback_data: 'arena_rankings' }
+        ],
+        [
+          { text: '◀️ Back to Menu', callback_data: 'main_menu' }
         ]
       ]
     }

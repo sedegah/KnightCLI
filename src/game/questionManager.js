@@ -40,7 +40,7 @@ export class QuestionManager {
       if (!question) {
         return {
           question: null,
-          error: '🎉 **You\'ve answered all available questions!**\n\nNew questions are added regularly. Check back soon!'
+          error: '📝 **No questions available**\n\nPlease contact the administrator to add questions to the database.\n\n*Powered by G-NEX*'
         };
       }
 

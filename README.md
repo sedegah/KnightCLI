@@ -1,12 +1,12 @@
-# G-NEX Quiz Platform
+# I-Crush Quiz Platform
 
-**A scalable, competitive Telegram quiz platform built on Cloudflare Workers**
+**A scalable, competitive Telegram quiz game built on Cloudflare Workers - Powered by G-NEX**
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sedegah/KnightCLI)
 
 ## Overview
 
-G-NEX is a production-ready Telegram quiz platform featuring:
+I-Crush is a production-ready Telegram quiz game featuring:
 - **Daily Quizzes** with streak tracking and bonus points
 - **Prize Rounds** (2x daily) with real rewards
 - **1v1 Battles** for competitive play (coming soon)

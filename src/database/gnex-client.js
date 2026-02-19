@@ -178,7 +178,10 @@ export class GNEXDatabase {
         }
       }
 
-      if (questions.length === 0) return null;
+      if (questions.length === 0) {
+        logger.warn('No active questions found in database');
+        return null;
+      }
 
       // Weighted random selection (Ghana questions get higher weight)
       const weights = questions.map(q => {
@@ -199,6 +202,7 @@ export class GNEXDatabase {
         }
       }
 
+      // Fallback to first question
       return questions[0];
     } catch (error) {
       logger.error('Error getting random question:', error);

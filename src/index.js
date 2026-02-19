@@ -1,6 +1,7 @@
 /**
- * G-NEX Telegram Bot - Cloudflare Workers Entry Point
+ * I-Crush Quiz Game - Cloudflare Workers Entry Point
  * Complete edge-optimized implementation
+ * Powered by G-NEX
  */
 
 import { Hono } from 'hono';
@@ -16,7 +17,7 @@ const app = new Hono();
 app.get('/health', (c) => {
   return c.json({
     status: 'ok',
-    service: 'gnex-telegram-bot',
+    service: 'icrush-quiz-game',
     version: '2.0.0',
     timestamp: new Date().toISOString()
   });
