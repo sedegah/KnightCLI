@@ -203,38 +203,51 @@ export class QuestionManager {
 
   async calculatePoints(user, question, isCorrect, responseTime, isPrizeRound) {
     try {
-      let basePoints = 5;
+      if (!isCorrect) {
+        return {
+          total: 0,
+          ap: 0,
+          pp: 0,
+          type: isPrizeRound ? 'pp' : 'ap',
+          breakdown: {
+            base: 0,
+            speedBonus: 0,
+            streakBonus: 0,
+            ghanaBonus: 0,
+            subscriptionBonus: 0
+          }
+        };
+      }
+
+      let basePoints = 0;
       let ap = 0;
       let pp = 0;
       let pointType = 'ap';
 
-      // Base points for correct answer
-      if (isCorrect) {
-        basePoints = isPrizeRound ? 10 : 8;
-        
-        // Ghana question bonus
-        if (this.isGhanaQuestion(question.category)) {
-          basePoints = Math.round(basePoints * 1.2);
-        }
+      basePoints = isPrizeRound ? 10 : 8;
+      
+      // Ghana question bonus
+      if (this.isGhanaQuestion(question.category)) {
+        basePoints = Math.round(basePoints * 1.2);
+      }
 
-        // Speed bonus
-        if (responseTime < 10) {
-          basePoints = Math.round(basePoints * 1.5);
-        } else if (responseTime < 20) {
-          basePoints = Math.round(basePoints * 1.2);
-        }
+      // Speed bonus
+      if (responseTime < 10) {
+        basePoints = Math.round(basePoints * 1.5);
+      } else if (responseTime < 20) {
+        basePoints = Math.round(basePoints * 1.2);
+      }
 
-        // Streak bonus
-        if (user.streak >= 30) {
-          basePoints = Math.round(basePoints * 1.3);
-        } else if (user.streak >= 7) {
-          basePoints = Math.round(basePoints * 1.1);
-        }
+      // Streak bonus
+      if (user.streak >= 30) {
+        basePoints = Math.round(basePoints * 1.3);
+      } else if (user.streak >= 7) {
+        basePoints = Math.round(basePoints * 1.1);
+      }
 
-        // Subscription bonus
-        if (user.subscription_status === 'subscriber') {
-          basePoints = Math.round(basePoints * 1.25);
-        }
+      // Subscription bonus
+      if (user.subscription_status === 'subscriber') {
+        basePoints = Math.round(basePoints * 1.25);
       }
 
       // Assign points based on game mode
@@ -252,7 +265,7 @@ export class QuestionManager {
         pp,
         type: pointType,
         breakdown: {
-          base: isCorrect ? (isPrizeRound ? 10 : 8) : 0,
+          base: isPrizeRound ? 10 : 8,
           speedBonus: responseTime < 10 ? Math.round(basePoints * 0.3) : responseTime < 20 ? Math.round(basePoints * 0.1) : 0,
           streakBonus: user.streak >= 30
             ? Math.round(basePoints * 0.3)
