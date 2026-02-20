@@ -213,6 +213,20 @@ export class QuestionManager {
 
   formatQuestionText(question, questionNumber) {
     const questionText = question.question || 'What is your answer?';
+    
+    // Check if it's a True/False question (options C and D are N/A)
+    const isTrueFalse = (question.option_c === 'N/A' || !question.option_c) && 
+                        (question.option_d === 'N/A' || !question.option_d);
+    
+    if (isTrueFalse) {
+      // Format for True/False questions (only show A and B)
+      return `**Question #${questionNumber}**\n\n${questionText}\n\n` +
+             `A) ${question.option_a}\n` +
+             `B) ${question.option_b}\n\n` +
+             `⏱️ Time: 30s | Category: ${question.category || 'General'}`;
+    }
+    
+    // Format for multiple choice questions (show all 4 options)
     return `**Question #${questionNumber}**\n\n${questionText}\n\n` +
            `A) ${question.option_a}\n` +
            `B) ${question.option_b}\n` +

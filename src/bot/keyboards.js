@@ -28,8 +28,28 @@ export function createMainMenuKeyboard() {
 
 /**
  * Create question options keyboard (InlineKeyboard - callback buttons)
+ * @param {string} questionId - The question ID
+ * @param {object} question - Optional question object to detect True/False questions
  */
-export function createQuestionKeyboard(questionId) {
+export function createQuestionKeyboard(questionId, question = null) {
+  // Check if this is a True/False question (options C and D are N/A or empty)
+  const isTrueFalse = question && 
+    (question.option_c === 'N/A' || !question.option_c) && 
+    (question.option_d === 'N/A' || !question.option_d);
+  
+  if (isTrueFalse) {
+    // Show only 2 options for True/False questions
+    return {
+      inline_keyboard: [
+        [
+          { text: `A) ${question.option_a}`, callback_data: `answer_A_${questionId}` },
+          { text: `B) ${question.option_b}`, callback_data: `answer_B_${questionId}` }
+        ]
+      ]
+    };
+  }
+  
+  // Show all 4 options for multiple choice questions
   return {
     inline_keyboard: [
       [

@@ -42,11 +42,140 @@ export async function handleTelegramUpdate(update, env) {
 }
 
 /**
+ * Handle conversation flow when user is in a specific state
+ */
+async function handleConversationFlow(message, db, userState, env) {
+  const telegramId = message.from.id;
+  const text = message.text || '';
+  
+  switch (userState.state) {
+    case '1v1_waiting_opponent':
+      await handleChallenge1v1Input(message, db, text, env);
+      break;
+      
+    case 'partnership_waiting_partner':
+      await sendMessage(
+        env.TELEGRAM_BOT_TOKEN,
+        message.chat.id,
+        '🚧 Partnership feature is coming soon! Type /cancel to go back.'
+      );
+      break;
+      
+    case 'squad_waiting_name':
+      await sendMessage(
+        env.TELEGRAM_BOT_TOKEN,
+        message.chat.id,
+        '🚧 Squad feature is coming soon! Type /cancel to go back.'
+      );
+      break;
+      
+    default:
+      await db.clearUserState(telegramId);
+      await handleUnknownMessage(message, db, env);
+  }
+}
+
+/**
+ * Handle 1v1 challenge opponent input
+ */
+async function handleChallenge1v1Input(message, db, opponentInput, env) {
+  const challengerId = message.from.id;
+  
+  try {
+    // Find the opponent
+    const opponent = await db.getUserByUsernameOrId(opponentInput);
+    
+    if (!opponent) {
+      await sendMessage(
+        env.TELEGRAM_BOT_TOKEN,
+        message.chat.id,
+        '❌ Player not found. Please check the username or ID and try again.\n\nOr type /cancel to go back.'
+      );
+      return;
+    }
+    
+    // Can't challenge yourself
+    if (opponent.telegram_id === challengerId) {
+      await sendMessage(
+        env.TELEGRAM_BOT_TOKEN,
+        message.chat.id,
+        '❌ You can\'t challenge yourself! Please enter a different player.\n\nOr type /cancel to go back.'
+      );
+      return;
+    }
+    
+    // Create challenge in database
+    const challengeId = crypto.randomUUID();
+    await db.executeQuery(
+      `INSERT INTO challenges (id, challenger_id, opponent_id, status, questions_per_round, time_limit, created_at, expires_at)
+       VALUES (?, ?, ?, 'pending', 5, 30, CURRENT_TIMESTAMP, datetime('now', '+24 hours'))`,
+      [challengeId, challengerId, opponent.telegram_id]
+    );
+    
+    // Clear user state
+    await db.clearUserState(challengerId);
+    
+    // Notify challenger
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      `✅ Challenge sent to ${opponent.full_name || opponent.username}!\n\n⏳ Waiting for them to accept...\n\nYou'll be notified when they respond.`,
+      createMainMenuKeyboard()
+    );
+    
+    // Notify opponent
+    const challenger = await db.getUser(challengerId);
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      opponent.telegram_id,
+      `🎮 **New 1v1 Challenge!**\n\n${challenger.full_name || challenger.username} has challenged you to a 5-question battle!\n\n⚡ Accept the challenge?`,
+      {
+        inline_keyboard: [
+          [
+            { text: '✅ Accept', callback_data: `accept_challenge_${challengeId}` },
+            { text: '❌ Decline', callback_data: `decline_challenge_${challengeId}` }
+          ]
+        ]
+      }
+    );
+    
+  } catch (error) {
+    logger.error('Error handling 1v1 challenge input:', error);
+    await db.clearUserState(challengerId);
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '❌ Something went wrong. Please try again later.',
+      createMainMenuKeyboard()
+    );
+  }
+}
+
+/**
  * Handle incoming messages
  */
 async function handleMessage(message, db, questionManager, env) {
   const telegramId = message.from.id;
   const text = message.text || '';
+
+  // Check if user is in a conversation flow
+  const userState = await db.getUserState(telegramId);
+  if (userState && text !== '/cancel') {
+    await handleConversationFlow(message, db, userState, env);
+    return;
+  }
+
+  // Handle cancel command
+  if (text === '/cancel') {
+    await db.clearUserState(telegramId);
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '❌ Operation cancelled.',
+      createMainMenuKeyboard()
+    );
+    return;
+  }
 
   // Handle commands
   if (text.startsWith('/start')) {
@@ -174,7 +303,13 @@ async function handleCallbackQuery(query, db, questionManager, env) {
     } else if (data === 'arena') {
       await handleArenaCallback(callbackMessage, env);
     } else if (data === 'start_1v1') {
-      await handleStart1v1Callback(callbackMessage, env);
+      await handleStart1v1Callback(callbackMessage, db, env);
+    } else if (data.startsWith('accept_challenge_')) {
+      const challengeId = data.replace('accept_challenge_', '');
+      await handleAcceptChallengeCallback(callbackMessage, db, challengeId, env);
+    } else if (data.startsWith('decline_challenge_')) {
+      const challengeId = data.replace('decline_challenge_', '');
+      await handleDeclineChallengeCallback(callbackMessage, db, challengeId, env);
     } else if (data === 'view_rankings') {
       await handleViewRankingsCallback(callbackMessage, db, env);
     } else if (data === 'find_partner') {
@@ -302,7 +437,7 @@ async function handlePlayCommand(message, db, questionManager, env) {
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
     questionText,
-    createQuestionKeyboard(question.id)
+    createQuestionKeyboard(question.id, question)
   );
 }
 
@@ -342,7 +477,7 @@ async function handlePlayCallback(query, db, questionManager, env) {
     query.chat.id,
     query.message_id,
     questionText,
-    createQuestionKeyboard(question.id)
+    createQuestionKeyboard(question.id, question)
   );
 }
 
@@ -721,7 +856,14 @@ async function handleArenaRankingsCallback(message, env) {
   );
 }
 
-async function handleStart1v1Callback(message, env) {
+async function handleStart1v1Callback(message, db, env) {
+  const telegramId = message.from.id;
+  
+  // Set user state to wait for opponent input
+  await db.setUserState(telegramId, '1v1_waiting_opponent', {
+    initiated_at: new Date().toISOString()
+  });
+  
   await sendMessage(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
@@ -763,6 +905,123 @@ async function handleCreateSquadCallback(message, env) {
     message.chat.id,
     '👥 **Create New Squad**\n\n*Please enter your squad name:*\n\nExample: Ghana Warriors, Quiz Masters, etc.\n\n(3-20 characters, letters and spaces only)\n\nOr type /cancel to go back.'
   );
+}
+
+/**
+ * Handle accept challenge callback
+ */
+async function handleAcceptChallengeCallback(message, db, challengeId, env) {
+  const opponentId = message.from.id;
+  
+  try {
+    // Get challenge details
+    const result = await db.executeQuery(
+      'SELECT * FROM challenges WHERE id = ? AND opponent_id = ? AND status = \'pending\'',
+      [challengeId, opponentId]
+    );
+    
+    if (result.length === 0) {
+      await sendMessage(
+        env.TELEGRAM_BOT_TOKEN,
+        message.chat.id,
+        '❌ Challenge not found or already expired.'
+      );
+      return;
+    }
+    
+    const challenge = result[0];
+    
+    // Update challenge status to active
+    await db.executeQuery(
+      'UPDATE challenges SET status = \'active\', started_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [challengeId]
+    );
+    
+    // Get challenger info
+    const challenger = await db.getUser(challenge.challenger_id);
+    const opponent = await db.getUser(opponentId);
+    
+    // Notify opponent (accepter)
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      `✅ Challenge accepted!\\n\\n🎮 Starting 1v1 battle with ${challenger.full_name || challenger.username}...\\n\\n⚠️ Feature under development. You'll be notified when the battle interface is ready!`,
+      createMainMenuKeyboard()
+    );
+    
+    // Notify challenger
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      challenge.challenger_id,
+      `🎉 ${opponent.full_name || opponent.username} accepted your challenge!\\n\\n⚠️ Battle feature coming soon. Stay tuned!`
+    );
+    
+  } catch (error) {
+    logger.error('Error accepting challenge:', error);
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '❌ Something went wrong. Please try again.'
+    );
+  }
+}
+
+/**
+ * Handle decline challenge callback
+ */
+async function handleDeclineChallengeCallback(message, db, challengeId, env) {
+  const opponentId = message.from.id;
+  
+  try {
+    // Get challenge details
+    const result = await db.executeQuery(
+      'SELECT * FROM challenges WHERE id = ? AND opponent_id = ? AND status = \'pending\'',
+      [challengeId, opponentId]
+    );
+    
+    if (result.length === 0) {
+      await sendMessage(
+        env.TELEGRAM_BOT_TOKEN,
+        message.chat.id,
+        '❌ Challenge not found or already expired.'
+      );
+      return;
+    }
+    
+    const challenge = result[0];
+    
+    // Update challenge status to declined
+    await db.executeQuery(
+      'UPDATE challenges SET status = \'declined\', ended_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [challengeId]
+    );
+    
+    // Get opponent info
+    const opponent = await db.getUser(opponentId);
+    
+    // Notify opponent (decliner)
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '❌ Challenge declined.',
+      createMainMenuKeyboard()
+    );
+    
+    // Notify challenger
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      challenge.challenger_id,
+      `😔 ${opponent.full_name || opponent.username} declined your challenge.\\n\\nDon't give up! Challenge someone else!`
+    );
+    
+  } catch (error) {
+    logger.error('Error declining challenge:', error);
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '❌ Something went wrong. Please try again.'
+    );
+  }
 }
 
 // ==========================================

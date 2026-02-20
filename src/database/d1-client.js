@@ -225,6 +225,92 @@ export class D1Database {
   }
 
   /**
+   * Set user conversation state
+   */
+  async setUserState(telegramId, state, data = null) {
+    try {
+      await this.executeQuery(
+        'UPDATE users SET conversation_state = ?, conversation_data = ?, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?',
+        [state, data ? JSON.stringify(data) : null, telegramId]
+      );
+      return true;
+    } catch (error) {
+      logger.error('Error setting user state:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get user conversation state
+   */
+  async getUserState(telegramId) {
+    try {
+      const result = await this.executeQuery(
+        'SELECT conversation_state, conversation_data FROM users WHERE telegram_id = ?',
+        [telegramId]
+      );
+      if (result.length > 0 && result[0].conversation_state) {
+        return {
+          state: result[0].conversation_state,
+          data: result[0].conversation_data ? JSON.parse(result[0].conversation_data) : null
+        };
+      }
+      return null;
+    } catch (error) {
+      logger.error('Error getting user state:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear user conversation state
+   */
+  async clearUserState(telegramId) {
+    try {
+      await this.executeQuery(
+        'UPDATE users SET conversation_state = NULL, conversation_data = NULL, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?',
+        [telegramId]
+      );
+      return true;
+    } catch (error) {
+      logger.error('Error clearing user state:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Find user by username or telegram ID
+   */
+  async getUserByUsernameOrId(input) {
+    try {
+      // Remove @ if present
+      const cleanInput = input.replace('@', '');
+      
+      // Try to parse as number (telegram ID)
+      const numericId = parseInt(cleanInput, 10);
+      
+      if (!isNaN(numericId)) {
+        // Search by telegram ID
+        const result = await this.executeQuery(
+          'SELECT * FROM users WHERE telegram_id = ?',
+          [numericId]
+        );
+        return result.length > 0 ? result[0] : null;
+      } else {
+        // Search by username
+        const result = await this.executeQuery(
+          'SELECT * FROM users WHERE username = ? COLLATE NOCASE',
+          [cleanInput]
+        );
+        return result.length > 0 ? result[0] : null;
+      }
+    } catch (error) {
+      logger.error('Error finding user:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get user statistics
    */
   async getUserStats(telegramId) {

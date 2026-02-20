@@ -199,6 +199,42 @@ app.get('/admin/stats', async (c) => {
 });
 
 /**
+ * Test endpoint to trigger prize round notification
+ */
+app.get('/admin/test-prize-round', async (c) => {
+  try {
+    const db = new D1Database(c.env);
+    const prizeManager = new PrizeRoundManager(db, c.env.TELEGRAM_BOT_TOKEN);
+    
+    // Get the round type from query param (default: MORNING)
+    const roundType = c.req.query('type')?.toUpperCase() || 'MORNING';
+    
+    logger.info(`📢 Manual Prize Round Test - Type: ${roundType}`);
+    
+    let result;
+    if (roundType === 'MORNING') {
+      result = await prizeManager.runMorningRound();
+    } else if (roundType === 'EVENING') {
+      result = await prizeManager.runEveningRound();
+    } else {
+      return c.json({ error: 'Invalid round type. Use MORNING or EVENING' }, 400);
+    }
+    
+    return c.json({
+      success: true,
+      message: 'Prize round test completed',
+      result
+    });
+  } catch (error) {
+    logger.error('Test prize round error:', error);
+    return c.json({ 
+      error: 'Test failed', 
+      message: error.message 
+    }, 500);
+  }
+});
+
+/**
  * Migration endpoint
  */
 app.post('/migrate', async (c) => {
