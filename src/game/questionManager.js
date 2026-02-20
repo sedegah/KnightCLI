@@ -168,6 +168,8 @@ export class QuestionManager {
         correct_answers: user.correct_answers + (isCorrect ? 1 : 0),
         ap: user.ap + points.ap,
         pp: user.pp + points.pp,
+        total_ap: (user.total_ap || 0) + points.ap,
+        total_pp: (user.total_pp || 0) + points.pp,
         weekly_points: user.weekly_points + points.total,
         streak: streakUpdate.streak,
         last_played_date: streakUpdate.today
