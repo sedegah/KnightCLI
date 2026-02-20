@@ -13,7 +13,7 @@ import { GhanaQuestionManager } from '../game/ghanaQuestions.js';
 import { DataRewardManager } from '../game/dataRewards.js';
 import { ViralGrowthManager } from '../growth/viral.js';
 import { logger } from '../utils/logger.js';
-import { sendMessage, sendMessageWithKeyboard, editMessageText } from '../utils/telegram.js';
+import { sendMessage, sendMessageWithKeyboard, editMessageText, sendAnimation } from '../utils/telegram.js';
 import { createMainMenuKeyboard, createQuestionKeyboard } from './keyboards.js';
 import { MESSAGES } from '../config/constants.js';
 
@@ -347,6 +347,7 @@ async function handleStartCommand(message, db, env) {
   const telegramId = message.from.id;
   const username = message.from.username || `user_${telegramId}`;
   const fullName = message.from.first_name + (message.from.last_name ? ` ${message.from.last_name}` : '');
+  const startAnimationUrl = env.START_ANIMATION_URL || 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWV2bW5jN3hsaWJubGN6N2Q2aGRvZ2RoNnJ3N2N6OWVzajNpb3NoNyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/jpVnC65DmYeyRL4LHS/giphy.gif';
 
   // Check if user exists
   let user = await db.getUser(telegramId);
@@ -354,6 +355,13 @@ async function handleStartCommand(message, db, env) {
   if (user) {
     // Existing user
     console.log('Existing user found:', { telegramId, fullName: user.full_name });
+    await sendAnimation(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      startAnimationUrl,
+      `Welcome back, ${user.full_name}! 🎉`
+    );
+
     await sendMessageWithKeyboard(
       env.TELEGRAM_BOT_TOKEN,
       message.chat.id,
@@ -389,6 +397,13 @@ async function handleStartCommand(message, db, env) {
     }
 
     console.log('User created successfully:', { telegramId, fullName: user.full_name });
+
+    await sendAnimation(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      startAnimationUrl,
+      `Welcome to I-Crush, ${fullName || username}! 🚀`
+    );
 
     // Send welcome message
     await sendMessageWithKeyboard(

@@ -33,6 +33,35 @@ export async function sendMessage(botToken, chatId, text, parseMode = 'Markdown'
 }
 
 /**
+ * Send an animation (GIF/MP4)
+ */
+export async function sendAnimation(botToken, chatId, animation, caption = '', parseMode = 'Markdown') {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendAnimation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        animation,
+        caption,
+        parse_mode: parseMode
+      })
+    });
+
+    const result = await response.json();
+
+    if (!result.ok) {
+      logger.error('Telegram API animation error:', result);
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Error sending animation:', error);
+    return null;
+  }
+}
+
+/**
  * Send a message with inline keyboard
  */
 /**
