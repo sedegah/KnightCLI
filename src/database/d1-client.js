@@ -132,6 +132,56 @@ export class D1Database {
   }
 
   /**
+   * Get random unseen question for a user (prevents repeats)
+   */
+  async getRandomUnseenQuestion(telegramId) {
+    try {
+      const result = await this.executeQuery(
+        `SELECT q.*
+         FROM questions q
+         WHERE q.is_active = 1
+           AND q.question IS NOT NULL
+           AND TRIM(q.question) <> ''
+           AND NOT EXISTS (
+             SELECT 1
+             FROM user_attempts ua
+             WHERE ua.telegram_id = ?
+               AND ua.question_id = q.id
+           )
+         ORDER BY RANDOM()
+         LIMIT 1`,
+        [telegramId]
+      );
+
+      return result.length > 0 ? result[0] : null;
+    } catch (error) {
+      logger.error('Error getting random unseen question:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Count answered normal-mode questions for a user
+   */
+  async getUserNormalQuestionCount(telegramId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const result = await this.executeQuery(
+        `SELECT COUNT(*) as count
+         FROM user_attempts
+         WHERE telegram_id = ?
+         AND substr(attempted_at, 1, 10) = ?`,
+        [telegramId, today]
+      );
+
+      return result.length > 0 ? Number(result[0].count || 0) : 0;
+    } catch (error) {
+      logger.error('Error getting user normal question count:', error);
+      return 0;
+    }
+  }
+
+  /**
    * Get question by ID
    */
   async getQuestion(questionId) {
@@ -524,6 +574,23 @@ export class D1Database {
       return result;
     } catch (error) {
       logger.error('Error getting top streaks:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get users eligible for bot notifications
+   */
+  async getUsersForNotifications() {
+    try {
+      const result = await this.executeQuery(
+        `SELECT telegram_id, username, full_name
+         FROM users
+         WHERE is_banned = 0`
+      );
+      return result || [];
+    } catch (error) {
+      logger.error('Error getting users for notifications:', error);
       return [];
     }
   }

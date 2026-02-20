@@ -6,7 +6,6 @@
 
 import { Hono } from 'hono';
 import { handleTelegramUpdate } from './bot/updateHandler.js';
-import { verifyTelegramRequest } from './utils/security.js';
 import { D1Database } from './database/d1-client.js';
 import { PrizeRoundManager } from './prize-rounds/prizeRoundManager.js';
 import { logger } from './utils/logger.js';
@@ -32,96 +31,210 @@ app.get('/', (c) => {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>G-NEX: Ghana's Competitive Data Quiz Arena</title>
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 2rem; 
-            background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%); 
-            color: #fff; 
-            min-height: 100vh; 
-        }
-        .container { 
-            background: rgba(255, 255, 255, 0.1); 
-            backdrop-filter: blur(10px); 
-            border-radius: 20px; 
-            padding: 2rem; 
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); 
-        }
-        .header { text-align: center; margin-bottom: 2rem; }
-        .features { background: rgba(255, 255, 255, 0.05); padding: 1.5rem; border-radius: 10px; margin: 1rem 0; }
-        .feature { margin: 0.5rem 0; padding: 0.5rem; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
-        .stat { background: rgba(255, 255, 255, 0.1); padding: 1rem; border-radius: 10px; text-align: center; }
-        .cta { text-align: center; margin: 2rem 0; }
-        .btn { 
-            background: #FF6B6B; 
-            color: white; 
-            padding: 12px 24px; 
-            text-decoration: none; 
-            border-radius: 8px; 
-            display: inline-block; 
-            font-weight: bold;
-            transition: transform 0.2s;
-        }
-        .btn:hover { transform: translateY(-2px); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G-NEX: Ghana's Competitive Data Quiz Arena</title>
+  <style>
+    :root {
+      --bg: #07090d;
+      --panel: rgba(255, 255, 255, 0.04);
+      --line: rgba(255, 255, 255, 0.14);
+      --text: #f5f7ff;
+      --muted: #a6adbb;
+      --accent: #77f7d1;
+      --accent-2: #86a9ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(60rem 30rem at 10% -10%, rgba(134, 169, 255, 0.20), transparent 55%),
+        radial-gradient(50rem 30rem at 95% -5%, rgba(119, 247, 209, 0.20), transparent 50%),
+        var(--bg);
+      padding: 32px 18px;
+    }
+
+    .shell {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    .badge {
+      width: fit-content;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(119, 247, 209, 0.10);
+      border: 1px solid rgba(119, 247, 209, 0.25);
+      border-radius: 999px;
+      padding: 6px 10px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.7rem, 4vw, 3rem);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      max-width: 18ch;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.98rem, 1.6vw, 1.15rem);
+      max-width: 58ch;
+    }
+
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .btn {
+      text-decoration: none;
+      color: #041318;
+      background: linear-gradient(90deg, var(--accent), #b9ffe6);
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-secondary {
+      text-decoration: none;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--line);
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .grid {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: var(--panel);
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #d8deea;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .meta {
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #8d95a6;
+      font-size: 13px;
+    }
+
+    .meta a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .meta a:hover {
+      text-decoration: underline;
+    }
+
+    .commands {
+      margin-top: 14px;
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #b8c0d0;
+      font-size: 13px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    code {
+      color: var(--accent-2);
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🇬🇭 G-NEX: Ghana's Competitive Data Quiz Arena</h1>
-            <p>Test Your Knowledge, Win Free Data, Dominate the Leaderboard!</p>
-        </div>
-        
-        <div class="features">
-            <h2>🎮 Game Features</h2>
-            <div class="feature">🏟️ <strong>Multiple Game Modes:</strong> 1v1 Challenges, Partner Mode, Squad Battles</div>
-            <div class="feature">🏆 <strong>Competitive Rankings:</strong> Bronze → Silver → Gold → Diamond → Elite</div>
-            <div class="feature">🔥 <strong>Streak Rewards:</strong> Build daily streaks for bonus points and data</div>
-            <div class="feature">💰 <strong>Points Economy:</strong> Earn and spend points on premium features</div>
-            <div class="feature">🎁 <strong>Data Rewards:</strong> Win free mobile data (MTN, Vodafone, AirtelTigo, GLO)</div>
-            <div class="feature">🇬🇭 <strong>Ghana-Focused:</strong> Local culture, sports, music, and current affairs</div>
-        </div>
+  <main class="shell">
+    <section class="hero">
+      <div class="badge">Live on Cloudflare Workers</div>
+      <h1>G-NEX: Ghana's Competitive Data Quiz Arena</h1>
+      <p class="lead">Test your knowledge, build streaks, and compete for free data rewards across solo play and multiplayer challenge modes.</p>
 
-        <div class="stats">
-            <div class="stat">
-                <h3>📱 Platform</h3>
-                <p>Telegram Bot</p>
-                <p>No downloads</p>
-            </div>
-            <div class="stat">
-                <h3>🎯 Focus</h3>
-                <p>Ghana Market</p>
-                <p>Local content</p>
-            </div>
-            <div class="stat">
-                <h3>🏆 Prizes</h3>
-                <p>Free Data</p>
-                <p>Weekly rewards</p>
-            </div>
-            <div class="stat">
-                <h3>⚡ Technology</h3>
-                <p>Cloudflare Workers</p>
-                <p>Global edge</p>
-            </div>
-        </div>
+      <div class="actions">
+        <a href="https://t.me/codecadencebot" class="btn">Start on Telegram</a>
+        <a href="/health" class="btn-secondary">Check System Health</a>
+      </div>
 
-        <div class="cta">
-            <h2>🚀 Ready to Play?</h2>
-            <a href="https://t.me/codecadencebot" class="btn">Start Playing on Telegram</a>
-            <p><strong>Commands:</strong> /start, /play, /arena, /rewards, /streak, /referral</p>
-        </div>
+      <div class="commands">
+        Commands: <code>/start</code> · <code>/play</code> · <code>/arena</code> · <code>/rewards</code> · <code>/streak</code> · <code>/referral</code>
+      </div>
 
-        <div style="text-align: center; margin-top: 2rem; opacity: 0.8;">
-            <p>Bot Status: ✅ Live and Running</p>
-            <p>Powered by Cloudflare Workers • Made with ❤️ for Ghana 🇬🇭</p>
-        </div>
-    </div>
+      <div class="grid">
+        <article class="card">
+          <h3>Game Modes</h3>
+          <p>1v1 challenges, partner mode, and squad battles keep competition fresh.</p>
+        </article>
+        <article class="card">
+          <h3>Rankings</h3>
+          <p>Climb from Bronze to Elite through weekly points, consistency, and skill.</p>
+        </article>
+        <article class="card">
+          <h3>Rewards</h3>
+          <p>Top players earn free data rewards across MTN, Vodafone, AirtelTigo, and GLO.</p>
+        </article>
+        <article class="card">
+          <h3>Built for Ghana</h3>
+          <p>Local-first questions, culture, and current affairs delivered via Telegram.</p>
+        </article>
+      </div>
+
+      <div class="meta">
+        <span>Bot Status: ✅ Live</span>
+        <span>Developed by Kimathi Sedegah • <a href="https://www.kimathi.tech/" target="_blank" rel="noopener noreferrer">Portfolio</a></span>
+      </div>
+    </section>
+  </main>
 </body>
 </html>`;
   
@@ -348,9 +461,17 @@ export default {
       const hour = scheduledTime.getUTCHours();
 
       if (hour === 9) {
-        ctx.waitUntil(prizeManager.runMorningRound());
+        ctx.waitUntil(prizeManager.startRound('MORNING'));
+      } else if (hour === 11) {
+        ctx.waitUntil(prizeManager.endRound('MORNING'));
+      } else if (hour === 12) {
+        ctx.waitUntil(prizeManager.releaseRoundResults('MORNING', scheduledTime));
       } else if (hour === 21) {
-        ctx.waitUntil(prizeManager.runEveningRound());
+        ctx.waitUntil(prizeManager.startRound('EVENING'));
+      } else if (hour === 23) {
+        ctx.waitUntil(prizeManager.endRound('EVENING'));
+      } else if (hour === 0) {
+        ctx.waitUntil(prizeManager.releaseRoundResults('EVENING', scheduledTime));
       } else {
         logger.info(`No prize round scheduled for hour ${hour} UTC`);
       }

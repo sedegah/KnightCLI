@@ -10,8 +10,57 @@ export class QuestionManager {
     this.db = database;
   }
 
+  calculateUpdatedStreak(user) {
+    const today = new Date().toISOString().split('T')[0];
+    const currentStreak = Number(user.streak || 0);
+    const lastPlayedDate = user.last_played_date;
+
+    if (!lastPlayedDate) {
+      return { streak: 1, streakBroken: false, today };
+    }
+
+    const lastPlayed = new Date(lastPlayedDate).toISOString().split('T')[0];
+    const todayStart = new Date(`${today}T00:00:00Z`).getTime();
+    const lastPlayedStart = new Date(`${lastPlayed}T00:00:00Z`).getTime();
+    const daysDiff = Math.floor((todayStart - lastPlayedStart) / (1000 * 60 * 60 * 24));
+
+    if (daysDiff <= 0) {
+      return {
+        streak: currentStreak > 0 ? currentStreak : 1,
+        streakBroken: false,
+        today
+      };
+    }
+
+    if (daysDiff === 1) {
+      return {
+        streak: Math.max(currentStreak, 0) + 1,
+        streakBroken: false,
+        today
+      };
+    }
+
+    return {
+      streak: 1,
+      streakBroken: currentStreak > 0,
+      today
+    };
+  }
+
   async getQuestionForUser(user, isPrizeRound = false) {
     try {
+      if (!isPrizeRound) {
+        const normalQuestionCount = await this.db.getUserNormalQuestionCount(user.telegram_id);
+        const normalQuestionLimit = 20;
+
+        if (normalQuestionCount >= normalQuestionLimit) {
+          return {
+            question: null,
+            error: `✅ You have reached today's normal quiz limit of ${normalQuestionLimit} questions.\n\nCome back tomorrow for more normal questions, or join prize rounds.`
+          };
+        }
+      }
+
       // Check rate limiting
       const rateLimitCount = await this.db.cacheRateLimit(user.telegram_id, 'play');
       const maxAttempts = user.subscription_status === 'subscriber' ? 40 : 20;
@@ -36,11 +85,11 @@ export class QuestionManager {
       }
 
       // Get new question
-      const question = await this.db.getRandomQuestion(user.telegram_id, true);
+      const question = await this.db.getRandomUnseenQuestion(user.telegram_id);
       if (!question) {
         return {
           question: null,
-          error: '📝 **No questions available**\n\nPlease contact the administrator to add questions to the database.\n\n*Powered by G-NEX*'
+          error: '📝 **No new questions available**\n\nYou have already attempted all currently available normal questions. Please check back later for new questions.\n\n*Powered by G-NEX*'
         };
       }
 
@@ -87,8 +136,16 @@ export class QuestionManager {
       const correctLetter = String.fromCharCode(65 + question.correct); // 0=>A, 1=>B, 2=>C, 3=>D
       const isCorrect = selectedOption.toUpperCase() === correctLetter.toUpperCase();
 
+      const streakUpdate = this.calculateUpdatedStreak(user);
+
       // Calculate points
-      const points = await this.calculatePoints(user, question, isCorrect, responseTime, isPrizeRound);
+      const points = await this.calculatePoints(
+        { ...user, streak: streakUpdate.streak },
+        question,
+        isCorrect,
+        responseTime,
+        isPrizeRound
+      );
 
       // Create attempt record
       await this.db.createAttempt({
@@ -112,7 +169,8 @@ export class QuestionManager {
         ap: user.ap + points.ap,
         pp: user.pp + points.pp,
         weekly_points: user.weekly_points + points.total,
-        last_played_date: new Date().toISOString().split('T')[0]
+        streak: streakUpdate.streak,
+        last_played_date: streakUpdate.today
       };
 
       await this.db.updateUser(user.telegram_id, updates);
@@ -128,6 +186,7 @@ export class QuestionManager {
         points,
         correctOption: String.fromCharCode(65 + question.correct),
         responseTime: Math.round(responseTime),
+        streakBroken: streakUpdate.streakBroken,
         user: {
           ...user,
           ...updates
@@ -166,10 +225,10 @@ export class QuestionManager {
         }
 
         // Streak bonus
-        if (user.streak >= 7) {
-          basePoints = Math.round(basePoints * 1.1);
-        } else if (user.streak >= 30) {
+        if (user.streak >= 30) {
           basePoints = Math.round(basePoints * 1.3);
+        } else if (user.streak >= 7) {
+          basePoints = Math.round(basePoints * 1.1);
         }
 
         // Subscription bonus
@@ -195,7 +254,11 @@ export class QuestionManager {
         breakdown: {
           base: isCorrect ? (isPrizeRound ? 10 : 8) : 0,
           speedBonus: responseTime < 10 ? Math.round(basePoints * 0.3) : responseTime < 20 ? Math.round(basePoints * 0.1) : 0,
-          streakBonus: user.streak >= 7 ? Math.round(basePoints * 0.1) : 0,
+          streakBonus: user.streak >= 30
+            ? Math.round(basePoints * 0.3)
+            : user.streak >= 7
+              ? Math.round(basePoints * 0.1)
+              : 0,
           ghanaBonus: this.isGhanaQuestion(question.category) ? Math.round(basePoints * 0.2) : 0,
           subscriptionBonus: user.subscription_status === 'subscriber' ? Math.round(basePoints * 0.25) : 0
         }

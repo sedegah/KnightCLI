@@ -3,7 +3,6 @@
  * Handles scheduled prize draws and winner announcements
  */
 
-import { D1Database } from '../database/d1-client.js';
 import { logger } from '../utils/logger.js';
 import { sendMessage } from '../utils/telegram.js';
 
@@ -14,179 +13,200 @@ export class PrizeRoundManager {
   }
 
   /**
-   * Run morning prize round (9:00 AM UTC)
+   * Backward-compatible manual trigger.
+   * Releases morning round results.
    */
   async runMorningRound() {
-    try {
-      logger.info('🌅 Starting Morning Prize Round (9:00 AM UTC)');
-      
-      const winners = await this.selectWinners('MORNING');
-      
-      if (winners.length === 0) {
-        logger.warn('No active players for morning round');
-        return { success: true, winnersCount: 0 };
-      }
-
-      // Award prizes
-      const awardedWinners = await this.awardPrizes(winners, 'MORNING');
-      
-      // Announce results
-      await this.announceWinners(awardedWinners, 'MORNING');
-      
-      logger.info(`✅ Morning Round Complete - ${awardedWinners.length} winners`);
-      
-      return {
-        success: true,
-        winnersCount: awardedWinners.length,
-        roundType: 'MORNING',
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      logger.error('❌ Morning Prize Round Failed:', error);
-      return { success: false, error: error.message };
-    }
+    return this.releaseRoundResults('MORNING');
   }
 
   /**
-   * Run evening prize round (9:00 PM UTC)
+   * Backward-compatible manual trigger.
+   * Releases evening round results.
    */
   async runEveningRound() {
-    try {
-      logger.info('🌆 Starting Evening Prize Round (9:00 PM UTC)');
-      
-      const winners = await this.selectWinners('EVENING');
-      
-      if (winners.length === 0) {
-        logger.warn('No active players for evening round');
-        return { success: true, winnersCount: 0 };
-      }
+    return this.releaseRoundResults('EVENING');
+  }
 
-      // Award prizes
-      const awardedWinners = await this.awardPrizes(winners, 'EVENING');
-      
-      // Announce results
-      await this.announceWinners(awardedWinners, 'EVENING');
-      
-      logger.info(`✅ Evening Round Complete - ${awardedWinners.length} winners`);
-      
-      return {
-        success: true,
-        winnersCount: awardedWinners.length,
-        roundType: 'EVENING',
-        timestamp: new Date().toISOString()
-      };
+  async startRound(roundType) {
+    try {
+      const roundName = roundType === 'MORNING' ? '🌅 Morning' : '🌆 Evening';
+      const message = `🚀 *${roundName} Prize Round Started!*\n\n` +
+        `⏱️ Round Duration: 2 hours\n` +
+        `🏁 Round End: ${roundType === 'MORNING' ? '11:00 UTC' : '23:00 UTC'}\n` +
+        `📢 Results Release: ${roundType === 'MORNING' ? '12:00 UTC' : '00:00 UTC'}\n\n` +
+        `🏆 Top 3 users will be announced.\n` +
+        `⚖️ No extra bonus points are added to keep competition fair.\n\n` +
+        `Play now and climb!`;
+
+      await this.broadcastMessage(message);
+      logger.info(`✅ ${roundType} prize round start announced`);
+      return { success: true, phase: 'START', roundType, timestamp: new Date().toISOString() };
     } catch (error) {
-      logger.error('❌ Evening Prize Round Failed:', error);
+      logger.error(`❌ ${roundType} prize round start failed:`, error);
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Select winners based on recent activity and points
-   */
-  async selectWinners(roundType) {
+  async endRound(roundType) {
     try {
-      // Get top 10 players who played in the last hour
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      
+      const roundName = roundType === 'MORNING' ? '🌅 Morning' : '🌆 Evening';
+      const message = `⏹️ *${roundName} Prize Round Ended!*\n\n` +
+        `Thanks for participating.\n` +
+        `📊 Results will be released at ${roundType === 'MORNING' ? '12:00 UTC' : '00:00 UTC'} with Top 3.`;
+
+      await this.broadcastMessage(message);
+      logger.info(`✅ ${roundType} prize round end announced`);
+      return { success: true, phase: 'END', roundType, timestamp: new Date().toISOString() };
+    } catch (error) {
+      logger.error(`❌ ${roundType} prize round end failed:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async releaseRoundResults(roundType, releaseTime = new Date()) {
+    try {
+      const window = this.getRoundWindow(roundType, releaseTime);
+      const winners = await this.selectWinnersForWindow(window.startIso, window.endIso, 3);
+
+      if (!winners.length) {
+        await this.announceNoWinners(roundType, window);
+        return {
+          success: true,
+          winnersCount: 0,
+          phase: 'RESULTS',
+          roundType,
+          window
+        };
+      }
+
+      const roundName = roundType === 'MORNING' ? '🌅 Morning' : '🌆 Evening';
+      let announcement = `🎊 *${roundName} Prize Round Results!*\n\n`;
+      announcement += `🏆 *Top 3 Winners:*\n\n`;
+
+      winners.forEach((winner, idx) => {
+        const medals = ['🥇', '🥈', '🥉'];
+        const medal = medals[idx] || `${idx + 1}.`;
+        announcement += `${medal} *${winner.display_name}*\n`;
+        announcement += `   ⭐ Round Score: ${winner.round_points}\n`;
+        announcement += `   ✅ Correct: ${winner.correct_answers} / ${winner.attempts}\n\n`;
+      });
+
+      announcement += `⚖️ No extra points were awarded for winning this round.\n`;
+      announcement += `This keeps leaderboard gaps fair for everyone.\n\n`;
+      announcement += `⏰ Next ${roundType === 'MORNING' ? 'Evening' : 'Morning'} Prize Round starts at ${roundType === 'MORNING' ? '21:00 UTC' : '09:00 UTC'}.`;
+
+      await this.broadcastMessage(announcement);
+
+      logger.info(`📢 ${roundType} results released with ${winners.length} winners`);
+      return {
+        success: true,
+        winnersCount: winners.length,
+        phase: 'RESULTS',
+        roundType,
+        window,
+        winners
+      };
+    } catch (error) {
+      logger.error(`Error releasing ${roundType} round results:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  getRoundWindow(roundType, releaseTime = new Date()) {
+    const at = new Date(releaseTime);
+    let baseDate = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+
+    if (roundType === 'EVENING' && at.getUTCHours() === 0) {
+      baseDate = new Date(baseDate.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    const y = baseDate.getUTCFullYear();
+    const m = String(baseDate.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(baseDate.getUTCDate()).padStart(2, '0');
+    const day = `${y}-${m}-${d}`;
+
+    if (roundType === 'MORNING') {
+      return {
+        startIso: `${day}T09:00:00.000Z`,
+        endIso: `${day}T11:00:00.000Z`,
+        label: `${day} 09:00-11:00 UTC`
+      };
+    }
+
+    return {
+      startIso: `${day}T21:00:00.000Z`,
+      endIso: `${day}T23:00:00.000Z`,
+      label: `${day} 21:00-23:00 UTC`
+    };
+  }
+
+  async selectWinnersForWindow(startIso, endIso, limit = 3) {
+    try {
       const query = `
-        SELECT DISTINCT u.telegram_id, u.full_name, u.ap, u.streak
+        SELECT
+          u.telegram_id,
+          COALESCE(NULLIF(u.full_name, ''), NULLIF(u.username, ''), 'Player ' || u.telegram_id) AS display_name,
+          SUM(CASE WHEN ua.is_correct = 1 THEN ua.points_earned ELSE 0 END) AS round_points,
+          SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct_answers,
+          COUNT(ua.id) AS attempts
         FROM users u
         INNER JOIN user_attempts ua ON u.telegram_id = ua.telegram_id
-        WHERE ua.attempted_at > ?
-        AND u.is_banned = 0
-        ORDER BY u.ap DESC, u.streak DESC
-        LIMIT 10
+        WHERE u.is_banned = 0
+          AND ua.attempted_at >= ?
+          AND ua.attempted_at < ?
+        GROUP BY u.telegram_id, u.full_name, u.username
+        HAVING round_points > 0
+        ORDER BY round_points DESC, correct_answers DESC, attempts ASC
+        LIMIT ?
       `;
 
-      const result = await this.db.executeQuery(query, [oneHourAgo]);
-      
-      return result || [];
+      const rows = await this.db.executeQuery(query, [startIso, endIso, limit]);
+      return rows || [];
     } catch (error) {
-      logger.error('Error selecting winners:', error);
+      logger.error('Error selecting winners for window:', error);
       return [];
     }
   }
 
-  /**
-   * Award prize points to winners
-   */
-  async awardPrizes(winners, roundType) {
-    const prizeDistribution = {
-      1: { pp: 1000, dataAmount: 1000 }, // 1GB
-      2: { pp: 750, dataAmount: 750 },   // 750MB
-      3: { pp: 500, dataAmount: 500 },   // 500MB
-      4: { pp: 400, dataAmount: 400 },   // 400MB
-      5: { pp: 300, dataAmount: 300 },   // 300MB
-      6: { pp: 250, dataAmount: 250 },   // 250MB
-      7: { pp: 200, dataAmount: 200 },   // 200MB
-      8: { pp: 150, dataAmount: 150 },   // 150MB
-      9: { pp: 100, dataAmount: 100 },   // 100MB
-      10: { pp: 50, dataAmount: 50 }     // 50MB
-    };
+  async announceNoWinners(roundType, window = null) {
+    try {
+      const roundName = roundType === 'MORNING' ? '🌅 Morning' : '🌆 Evening';
+      const message = `🎊 *${roundName} Prize Round Results*\n\n` +
+        `No eligible winners for this round window${window?.label ? ` (${window.label})` : ''}.\n\n` +
+        `🏆 Only Top 3 are recognized when there are qualifying scores.\n` +
+        `⚖️ No extra points are awarded for winning.\n\n` +
+        `⏰ Next round starts at ${roundType === 'MORNING' ? '21:00 UTC' : '09:00 UTC'}.`;
 
-    const awardedWinners = [];
+      await this.broadcastMessage(message);
+      logger.info(`📢 No-winner ${roundType} results update sent`);
+      return true;
+    } catch (error) {
+      logger.error('Error announcing no-winner prize round update:', error);
+      return false;
+    }
+  }
 
-    for (let i = 0; i < winners.length; i++) {
-      const position = i + 1;
-      const prize = prizeDistribution[position];
-      
-      if (!prize) continue;
+  async broadcastMessage(message) {
+    const users = await this.db.getUsersForNotifications();
+    let sentCount = 0;
+    let failedCount = 0;
 
+    for (const user of users) {
       try {
-        const winner = winners[i];
-        
-        // Update user with prize points
-        await this.db.updateUser(winner.telegram_id, {
-          pp: winner.pp + prize.pp
-        });
-
-        awardedWinners.push({
-          ...winner,
-          prizePosition: position,
-          prizePoints: prize.pp,
-          dataAmount: prize.dataAmount
-        });
-
-        logger.info(`🏆 Prize #${position}: ${winner.full_name} +${prize.pp} Prize Points (+${prize.dataAmount}MB)`);
+        const result = await sendMessage(this.botToken, user.telegram_id, message);
+        if (result?.ok) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
       } catch (error) {
-        logger.error(`Failed to award prize to ${winners[i].full_name}:`, error);
+        failedCount++;
+        logger.warn(`Failed broadcast to ${user.telegram_id}:`, error);
       }
     }
 
-    return awardedWinners;
-  }
-
-  /**
-   * Announce winners in Telegram
-   */
-  async announceWinners(winners, roundType) {
-    try {
-      const roundName = roundType === 'MORNING' ? '🌅 Morning' : '🌆 Evening';
-      let announcement = `🎊 *${roundName} Prize Round Results!*\n\n`;
-      announcement += `🏆 *Top Winners:*\n\n`;
-
-      winners.slice(0, 5).forEach((winner, idx) => {
-        const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
-        const medal = medals[idx] || '⭐';
-        announcement += `${medal} *#${winner.prizePosition}:* ${winner.full_name}\n`;
-        announcement += `   💎 +${winner.prizePoints} Prize Points\n`;
-        announcement += `   📱 +${winner.dataAmount}MB Data\n\n`;
-      });
-
-      announcement += `\n🎯 Keep playing to win the next round!\n`;
-      announcement += `⏰ Next ${roundType === 'MORNING' ? 'Evening' : 'Morning'} Round coming soon!\n\n`;
-      announcement += `*Powered by G-NEX 🇬🇭*`;
-
-      // Send to announcement channel (replace with actual channel ID)
-      // For now, just log it
-      logger.info('📢 Prize Round Announcement:\n' + announcement);
-      
-      return true;
-    } catch (error) {
-      logger.error('Error announcing winners:', error);
-      return false;
-    }
+    logger.info(`📢 Broadcast complete: ${sentCount} sent, ${failedCount} failed`);
   }
 
   /**
