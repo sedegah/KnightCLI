@@ -1409,11 +1409,11 @@ async function handleSubscribeCallback(message, env) {
   await sendMessageWithKeyboard(
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
-    '💎 **Go Premium**\n\n**Premium Benefits:**\n• 40 questions/hour (vs 20 free)\n• +7 speed bonus points\n• Exclusive premium questions\n• Priority support\n• Special tournaments\n\n**Pricing:**\n🇬🇭 Ghana: 5 GHS/month\n🌍 International: $3/month\n\nReady to upgrade? Contact @gnex_support',
+    MESSAGES.subscribe_info,
     {
       inline_keyboard: [
         [
-          { text: '💬 Contact Support', callback_data: 'help' },
+          { text: '💬 Contact Support', url: 'https://t.me/icrush_support' },
           { text: '◀️ Back', callback_data: 'main_menu' }
         ]
       ]

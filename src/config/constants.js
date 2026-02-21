@@ -40,20 +40,20 @@ Test your knowledge and win prizes!
 **User Type:** {userType}
 **Rank:** {rank}`,
 
-  subscribe_info: `💎 **Go Premium**
+  subscribe_info: `💎 Go Premium
 
-**Premium Benefits:**
+Premium Benefits:
 • 40 questions/hour (vs 20 free)
 • +7 speed bonus points
 • Exclusive premium questions
 • Priority support
 • Special tournaments
 
-**Pricing:**
+Pricing:
 🇬🇭 Ghana: 5 GHS/month
 🌍 International: $3/month
 
-Ready to upgrade? Contact @icrush_support`,
+Ready to upgrade? Contact support via the button below.`,
 
   invite_message: `🤝 **Share Your Referral Link**
 
@@ -174,18 +174,18 @@ Powered by Cloudflare Workers • Made with ❤️ for Ghana 🇬🇭
 *Need Support?*
 Contact @admin for help.`,
 
-  subscribe_prompt: `💎 **Upgrade to Premium**
+  subscribe_prompt: `💎 Upgrade to Premium
 
-Get more from your quiz experience!
+Get more from your quiz experience.
 
-**Premium Benefits:**
+Premium Benefits:
 • 40 questions/hour (vs 20 free)
 • +7 speed bonus points
 • Exclusive premium questions
 • Priority support
 • Special tournaments
 
-**Ready to upgrade?** Contact @icrush_support`
+Ready to upgrade? Tap the support button.`
 };
 
 export const BUTTON_LABELS = {
