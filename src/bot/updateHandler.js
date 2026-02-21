@@ -15,6 +15,7 @@ import { ViralGrowthManager } from '../growth/viral.js';
 import { logger } from '../utils/logger.js';
 import { sendMessage, sendMessageWithKeyboard, editMessageText, sendAnimation } from '../utils/telegram.js';
 import { createMainMenuKeyboard, createQuestionKeyboard } from './keyboards.js';
+import { config } from '../config/config.js';
 import { MESSAGES } from '../config/constants.js';
 
 export async function handleTelegramUpdate(update, env) {
@@ -290,7 +291,7 @@ async function handleCallbackQuery(query, db, questionManager, env) {
       await handleBattleRankingsCallback(callbackMessage, db, env);
     } else if (data === 'help') {
       await handleHelpCallback(callbackMessage, env);
-    } else if (data === 'subscribe') {
+    } else if (data === 'subscribe' || data === 'subscribe_info') {
       await handleSubscribeCallback(callbackMessage, env);
     } else if (data === 'wallet') {
       await handleWalletCallback(callbackMessage, db, env);
@@ -310,6 +311,12 @@ async function handleCallbackQuery(query, db, questionManager, env) {
     } else if (data.startsWith('decline_challenge_')) {
       const challengeId = data.replace('decline_challenge_', '');
       await handleDeclineChallengeCallback(callbackMessage, db, challengeId, env);
+    } else if (data.startsWith('prize_play_')) {
+      const roundType = data.replace('prize_play_', '');
+      await handlePrizePlayCallback(callbackMessage, db, questionManager, roundType, env);
+    } else if (data.startsWith('prize_reject_')) {
+      const roundType = data.replace('prize_reject_', '');
+      await handlePrizeRejectCallback(callbackMessage, db, roundType, env);
     } else if (data === 'view_rankings') {
       await handleViewRankingsCallback(callbackMessage, db, env);
     } else if (data === 'find_partner') {
@@ -359,7 +366,7 @@ async function handleStartCommand(message, db, env) {
       env.TELEGRAM_BOT_TOKEN,
       message.chat.id,
       startAnimationUrl,
-      `Welcome back, ${user.full_name}! 🎉`
+      ''
     );
 
     await sendMessageWithKeyboard(
@@ -402,7 +409,7 @@ async function handleStartCommand(message, db, env) {
       env.TELEGRAM_BOT_TOKEN,
       message.chat.id,
       startAnimationUrl,
-      `Welcome to I-Crush, ${fullName || username}! 🚀`
+      ''
     );
 
     // Send welcome message
@@ -534,8 +541,11 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
     questionId = activeData.question.id;
   }
 
+  const activeQuestionData = await db.getActiveQuestion(user.telegram_id);
+  const isPrizeRound = !!activeQuestionData?.isPrizeRound;
+
   // Process answer
-  const result = await questionManager.processAnswer(user, questionId, selectedOption, false);
+  const result = await questionManager.processAnswer(user, questionId, selectedOption, isPrizeRound);
 
   if (!result.success) {
     const chatId = query.message?.chat?.id || query.chat?.id || query.from?.id;
@@ -556,7 +566,7 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
   let responseText = '';
 
   if (result.isCorrect) {
-    const pointType = 'Arena Points';
+    const pointType = result.isPrizeRound ? 'PP' : 'AP';
     const breakdownData = result.points?.breakdown;
     const breakdown = breakdownData && typeof questionManager.formatBreakdown === 'function'
       ? questionManager.formatBreakdown(breakdownData, pointType)
@@ -585,6 +595,31 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
 
   const menuChatId = query.message?.chat?.id || query.chat?.id || query.from?.id;
   if (menuChatId) {
+    if (result.isPrizeRound) {
+      const session = await db.getActivePrizeRoundSession(user.telegram_id);
+      const answered = Number(session?.questions_answered || config.prizeRoundQuestionCount || 10);
+      const limit = Number(session?.question_limit || config.prizeRoundQuestionCount || 10);
+
+      if (answered < limit) {
+        await sendMessageWithKeyboard(
+          env.TELEGRAM_BOT_TOKEN,
+          menuChatId,
+          `🎯 Prize round progress: ${answered}/${limit}\nTap below for your next prize question.`,
+          {
+            inline_keyboard: [[{ text: '▶️ Next Prize Question', callback_data: `prize_play_${session?.round_type || 'MORNING'}` }]]
+          }
+        );
+      } else {
+        await sendMessageWithKeyboard(
+          env.TELEGRAM_BOT_TOKEN,
+          menuChatId,
+          `✅ Prize round complete! You answered ${limit}/${limit} questions.`,
+          createMainMenuKeyboard()
+        );
+      }
+      return;
+    }
+
     await sendMessageWithKeyboard(
       env.TELEGRAM_BOT_TOKEN,
       menuChatId,
@@ -592,6 +627,95 @@ async function handleAnswerCallback(query, data, db, questionManager, env) {
       createMainMenuKeyboard()
     );
   }
+}
+
+async function handlePrizePlayCallback(message, db, questionManager, roundType, env) {
+  const telegramId = message.from.id;
+  const user = await db.getUser(telegramId);
+  const normalizedRoundType = (roundType || 'MORNING').toUpperCase();
+
+  if (!user) {
+    await sendMessage(env.TELEGRAM_BOT_TOKEN, message.chat.id, 'Please use /start first!');
+    return;
+  }
+
+  if (!db.isPrizeRoundOpen(normalizedRoundType)) {
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '⏰ This prize round is not currently active. Wait for the next round notification.',
+      createMainMenuKeyboard()
+    );
+    return;
+  }
+
+  const session = await db.startPrizeRoundSession(
+    telegramId,
+    normalizedRoundType,
+    config.prizeRoundQuestionCount || 10
+  );
+
+  if (!session) {
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '❌ Could not start prize round session. Please try again.'
+    );
+    return;
+  }
+
+  if (session.status === 'rejected') {
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      '👌 You already rejected this prize round. You can join the next one when it starts.',
+      createMainMenuKeyboard()
+    );
+    return;
+  }
+
+  if (Number(session.questions_answered || 0) >= Number(session.question_limit || config.prizeRoundQuestionCount || 10)) {
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      `✅ You already reached your prize round limit (${session.question_limit}/${session.question_limit}).`,
+      createMainMenuKeyboard()
+    );
+    return;
+  }
+
+  const { question, error } = await questionManager.getQuestionForUser(user, true, session);
+
+  if (error) {
+    await sendMessageWithKeyboard(
+      env.TELEGRAM_BOT_TOKEN,
+      message.chat.id,
+      error,
+      createMainMenuKeyboard()
+    );
+    return;
+  }
+
+  const questionNumber = Number(session.questions_answered || 0) + 1;
+  const questionText = `🏆 *Prize Round* (${questionNumber}/${session.question_limit})\n\n${questionManager.formatQuestionText(question, questionNumber)}`;
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    questionText,
+    createQuestionKeyboard(question.id, question)
+  );
+}
+
+async function handlePrizeRejectCallback(message, db, roundType, env) {
+  const telegramId = message.from.id;
+  await db.rejectPrizeRound(telegramId, (roundType || 'MORNING').toUpperCase());
+
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    '👌 Prize round rejected. You can join the next one when it starts.',
+    createMainMenuKeyboard()
+  );
 }
 
 function parseAnswerData(data) {
@@ -779,6 +903,24 @@ async function handleInviteCommand(message, env) {
     env.TELEGRAM_BOT_TOKEN,
     message.chat.id,
     '📨 **Invite System**\n\nCreate invites for:\n• Squad members\n• Quiz partners\n• Viral challenges\n\nGrow your team and dominate the leaderboards!'
+  );
+}
+
+async function handleSubscribeCommand(message, env) {
+  await sendMessageWithKeyboard(
+    env.TELEGRAM_BOT_TOKEN,
+    message.chat.id,
+    MESSAGES.subscribe_info,
+    {
+      inline_keyboard: [
+        [
+          { text: '📩 Contact Support', url: 'https://t.me/icrush_support' }
+        ],
+        [
+          { text: '◀️ Back to Menu', callback_data: 'main_menu' }
+        ]
+      ]
+    }
   );
 }
 
